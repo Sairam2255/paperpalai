@@ -1,0 +1,559 @@
+/* =========================================================
+   PAPERPAL LAYOUT
+   ========================================================= */
+
+.app-layout {
+  min-height: 100vh;
+  display: flex;
+  background: #f8f6f9;
+  color: #302735;
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
+}
+
+.app-sidebar {
+  width: 248px;
+  flex: 0 0 248px;
+  min-height: 100vh;
+  box-sizing: border-box;
+
+  background: #ffffff;
+
+  border-right: 1px solid #ebe5ed;
+
+  padding: 17px 12px;
+
+  display: flex;
+  flex-direction: column;
+
+  z-index: 100;
+
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease;
+}
+
+/* =========================================================
+   BRAND
+   ========================================================= */
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 7px 17px;
+}
+
+.brand-mark {
+  width: 39px;
+  height: 39px;
+  border-radius: 12px;
+
+  background: #8140cc;
+  color: #ffffff;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-weight: 800;
+  font-size: 18px;
+}
+
+.sidebar-brand strong {
+  display: block;
+  color: #302735;
+  font-size: 16px;
+}
+
+.sidebar-brand span {
+  display: block;
+  margin-top: 2px;
+  color: #9b929f;
+  font-size: 9px;
+}
+
+/* =========================================================
+   MOBILE CLOSE
+   ========================================================= */
+
+.mobile-close-button {
+  display: none;
+  margin-left: auto;
+
+  border: none;
+  background: transparent;
+  color: #77707e;
+
+  cursor: pointer;
+}
+
+/* =========================================================
+   NEW CHAT
+   ========================================================= */
+
+.sidebar-new-chat {
+  width: 100%;
+
+  border: none;
+  border-radius: 10px;
+
+  background: #8140cc;
+  color: #ffffff;
+
+  padding: 10px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  gap: 7px;
+
+  font-size: 13px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.sidebar-new-chat:hover {
+  background: #7135b6;
+}
+
+.sidebar-new-chat:active {
+  transform: scale(0.98);
+}
+
+/* =========================================================
+   SECTION TITLES
+   ========================================================= */
+
+.sidebar-section-title {
+  padding: 22px 8px 8px;
+
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+
+  font-weight: 800;
+
+  color: #aaa1af;
+}
+
+.recent-title {
+  padding-top: 17px;
+}
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sidebar-link {
+  padding: 10px 10px;
+
+  border-radius: 9px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  text-decoration: none;
+
+  color: #6d6471;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.sidebar-link:hover {
+  background: #f6f1f8;
+  color: #69418a;
+}
+
+.sidebar-link.active {
+  background: #f0e7f6;
+  color: #713bb0;
+}
+
+.sidebar-link svg {
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   RECENT CHATS
+   ========================================================= */
+
+.sidebar-recent {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.sidebar-no-chats {
+  color: #aaa1ad;
+  font-size: 11px;
+  padding: 8px;
+}
+
+.sidebar-chat-item {
+  display: flex;
+  align-items: center;
+
+  border-radius: 8px;
+
+  margin-bottom: 2px;
+
+  transition:
+    background-color 0.2s ease;
+}
+
+.sidebar-chat-item:hover {
+  background: #f8f5fa;
+}
+
+.sidebar-chat-main {
+  min-width: 0;
+  flex: 1;
+
+  border: none;
+  background: transparent;
+
+  padding: 8px;
+
+  color: #665d6b;
+
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.sidebar-chat-main span {
+  min-width: 0;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  font-size: 11px;
+}
+
+.sidebar-chat-actions {
+  display: flex;
+  gap: 1px;
+}
+
+.sidebar-chat-actions button {
+  border: none;
+  background: transparent;
+
+  color: #aaa2ad;
+
+  width: 25px;
+  height: 25px;
+
+  border-radius: 6px;
+
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-chat-actions button:hover {
+  color: #713bb0;
+  background: #eee8f2;
+}
+
+/* =========================================================
+   CONTENT
+   ========================================================= */
+
+.app-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 100vh;
+
+  background: #f8f6f9;
+
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+.mobile-menu-button {
+  display: none;
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+/* =========================================================
+   DARK MODE
+   ========================================================= */
+
+/* Entire application */
+html[data-theme="dark"] .app-layout,
+body[data-theme="dark"] .app-layout {
+  background: #06080d !important;
+  color: #f1f5f9 !important;
+}
+
+/* Sidebar */
+html[data-theme="dark"] .app-sidebar,
+body[data-theme="dark"] .app-sidebar {
+  background: #0b1018 !important;
+  color: #f1f5f9 !important;
+
+  border-right: 1px solid #202a38 !important;
+}
+
+/* Brand name */
+html[data-theme="dark"] .sidebar-brand strong,
+body[data-theme="dark"] .sidebar-brand strong {
+  color: #f1f5f9 !important;
+}
+
+/* Subtitle */
+html[data-theme="dark"] .sidebar-brand span,
+body[data-theme="dark"] .sidebar-brand span {
+  color: #95a1b2 !important;
+}
+
+/* Mobile close icon */
+html[data-theme="dark"] .mobile-close-button,
+body[data-theme="dark"] .mobile-close-button {
+  color: #a8b0bd !important;
+}
+
+/* Workspace / Recent Chats headings */
+html[data-theme="dark"] .sidebar-section-title,
+body[data-theme="dark"] .sidebar-section-title {
+  color: #95a1b2 !important;
+}
+
+/* Navigation */
+html[data-theme="dark"] .sidebar-link,
+body[data-theme="dark"] .sidebar-link {
+  color: #b7c0ce !important;
+  background: transparent !important;
+}
+
+/* Navigation hover */
+html[data-theme="dark"] .sidebar-link:hover,
+body[data-theme="dark"] .sidebar-link:hover {
+  color: #f1f5f9 !important;
+  background: rgba(155, 107, 223, 0.12) !important;
+}
+
+/* Active navigation */
+html[data-theme="dark"] .sidebar-link.active,
+body[data-theme="dark"] .sidebar-link.active {
+  color: #c8a7f4 !important;
+  background: rgba(155, 107, 223, 0.18) !important;
+}
+
+/* Navigation icons */
+html[data-theme="dark"] .sidebar-link svg,
+body[data-theme="dark"] .sidebar-link svg {
+  color: #a8b0bd !important;
+}
+
+html[data-theme="dark"] .sidebar-link.active svg,
+body[data-theme="dark"] .sidebar-link.active svg {
+  color: #c8a7f4 !important;
+}
+
+/* New Chat */
+html[data-theme="dark"] .sidebar-new-chat,
+body[data-theme="dark"] .sidebar-new-chat {
+  background: #8b45d1 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .sidebar-new-chat:hover,
+body[data-theme="dark"] .sidebar-new-chat:hover {
+  background: #9b55df !important;
+}
+
+/* Recent chat row */
+html[data-theme="dark"] .sidebar-chat-item,
+body[data-theme="dark"] .sidebar-chat-item {
+  background: transparent !important;
+}
+
+html[data-theme="dark"] .sidebar-chat-item:hover,
+body[data-theme="dark"] .sidebar-chat-item:hover {
+  background: rgba(155, 107, 223, 0.10) !important;
+}
+
+/* Recent chat buttons */
+html[data-theme="dark"] .sidebar-chat-main,
+body[data-theme="dark"] .sidebar-chat-main {
+  color: #b7c0ce !important;
+}
+
+/* Recent chat icons */
+html[data-theme="dark"] .sidebar-chat-main svg,
+body[data-theme="dark"] .sidebar-chat-main svg {
+  color: #8994a4 !important;
+}
+
+html[data-theme="dark"] .sidebar-chat-main:hover,
+body[data-theme="dark"] .sidebar-chat-main:hover {
+  color: #f1f5f9 !important;
+}
+
+/* Recent chat text */
+html[data-theme="dark"] .sidebar-chat-main span,
+body[data-theme="dark"] .sidebar-chat-main span {
+  color: #b7c0ce !important;
+}
+
+/* No chats */
+html[data-theme="dark"] .sidebar-no-chats,
+body[data-theme="dark"] .sidebar-no-chats {
+  color: #7f8a9a !important;
+}
+
+/* Edit / Delete */
+html[data-theme="dark"] .sidebar-chat-actions button,
+body[data-theme="dark"] .sidebar-chat-actions button {
+  color: #7f8a9a !important;
+}
+
+html[data-theme="dark"] .sidebar-chat-actions button:hover,
+body[data-theme="dark"] .sidebar-chat-actions button:hover {
+  color: #c8a7f4 !important;
+  background: rgba(155, 107, 223, 0.14) !important;
+}
+
+/* Main content */
+html[data-theme="dark"] .app-content,
+body[data-theme="dark"] .app-content {
+  background: #06080d !important;
+}
+
+/* Scrollbar */
+html[data-theme="dark"] .sidebar-recent::-webkit-scrollbar {
+  width: 7px;
+}
+
+html[data-theme="dark"] .sidebar-recent::-webkit-scrollbar-track {
+  background: #0b1018;
+}
+
+html[data-theme="dark"] .sidebar-recent::-webkit-scrollbar-thumb {
+  background: #293242;
+  border-radius: 10px;
+}
+
+html[data-theme="dark"] .sidebar-recent::-webkit-scrollbar-thumb:hover {
+  background: #3a4558;
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .app-sidebar {
+    position: fixed;
+
+    left: -270px;
+    top: 0;
+
+    transition:
+      left 0.2s ease,
+      background-color 0.25s ease;
+
+    box-shadow: 8px 0 25px rgba(0, 0, 0, 0.08);
+  }
+
+  .app-sidebar.open {
+    left: 0;
+  }
+
+  .mobile-close-button {
+    display: block;
+  }
+
+  .mobile-menu-button {
+    position: fixed;
+
+    top: 12px;
+    left: 12px;
+
+    z-index: 80;
+
+    width: 38px;
+    height: 38px;
+
+    border-radius: 10px;
+
+    border: 1px solid #e5dde8;
+
+    background: #ffffff;
+    color: #68427d;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+  }
+
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+
+    z-index: 90;
+
+    display: block;
+
+    background: rgba(0, 0, 0, 0.18);
+  }
+
+  .app-content {
+    width: 100%;
+  }
+
+  /* Mobile dark menu button */
+  html[data-theme="dark"] .mobile-menu-button,
+  body[data-theme="dark"] .mobile-menu-button {
+    background: #0b1018 !important;
+    color: #c8a7f4 !important;
+    border-color: #202a38 !important;
+  }
+
+  html[data-theme="dark"] .sidebar-overlay,
+  body[data-theme="dark"] .sidebar-overlay {
+    background: rgba(0, 0, 0, 0.65) !important;
+  }
+}

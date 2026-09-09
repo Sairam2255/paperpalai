@@ -1,0 +1,855 @@
+/* =========================================================
+   PAPERPAL SETTINGS
+========================================================= */
+
+.settings-page {
+  width: 100%;
+  min-height: 100%;
+
+  box-sizing: border-box;
+
+  padding: 24px 26px 32px;
+
+  color: var(--pp-text);
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+
+  gap: 13px;
+
+  margin-bottom: 18px;
+}
+
+.settings-header-icon {
+  width: 46px;
+  height: 46px;
+
+  border-radius: 14px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: var(--pp-accent-soft);
+  color: var(--pp-accent);
+}
+
+.settings-kicker {
+  color: var(--pp-accent);
+
+  font-size: 9px;
+  font-weight: 900;
+
+  letter-spacing: 0.15em;
+}
+
+.settings-header h1 {
+  margin: 3px 0 4px;
+
+  color: var(--pp-text);
+
+  font-size: 28px;
+
+  letter-spacing: -0.04em;
+}
+
+.settings-header p {
+  margin: 0;
+
+  color: var(--pp-muted);
+
+  font-size: 12px;
+}
+
+/* =========================================================
+   SAVED MESSAGE
+========================================================= */
+
+.settings-saved {
+  width: fit-content;
+
+  margin-bottom: 13px;
+
+  padding: 8px 11px;
+
+  border-radius: 9px;
+
+  background: var(--pp-success-soft);
+
+  color: var(--pp-success);
+
+  display: flex;
+  align-items: center;
+
+  gap: 6px;
+
+  font-size: 10px;
+  font-weight: 750;
+}
+
+/* =========================================================
+   SECTION
+========================================================= */
+
+.settings-section {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  margin-bottom: 13px;
+
+  padding: 18px;
+
+  border:
+    1px solid
+    var(--pp-border);
+
+  border-radius: 16px;
+
+  background:
+    var(--pp-card);
+
+  box-shadow:
+    0 6px 24px
+      var(--pp-shadow);
+}
+
+.settings-section-heading {
+  display: flex;
+  align-items: flex-start;
+
+  gap: 10px;
+
+  margin-bottom: 14px;
+}
+
+.settings-heading-icon {
+  flex: 0 0 39px;
+
+  width: 39px;
+  height: 39px;
+
+  border-radius: 11px;
+
+  background:
+    var(--pp-accent-soft);
+
+  color:
+    var(--pp-accent);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-section-heading h2 {
+  margin: 1px 0 3px;
+
+  color: var(--pp-text);
+
+  font-size: 15px;
+}
+
+.settings-section-heading p {
+  margin: 0;
+
+  color: var(--pp-muted);
+
+  font-size: 10px;
+
+  line-height: 1.45;
+}
+
+/* =========================================================
+   THEME CARDS
+========================================================= */
+
+.theme-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 11px;
+}
+
+.theme-card {
+  min-width: 0;
+
+  padding: 10px;
+
+  border:
+    1px solid
+    var(--pp-border);
+
+  border-radius: 13px;
+
+  background:
+    var(--pp-card);
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    border-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.theme-card:hover {
+  transform: translateY(-1px);
+
+  border-color:
+    var(--pp-accent-border);
+}
+
+.theme-card.selected {
+  border-color:
+    var(--pp-accent);
+
+  box-shadow:
+    0 7px 20px
+      var(--pp-shadow-accent);
+}
+
+.theme-preview {
+  height: 100px;
+
+  border-radius: 9px;
+
+  overflow: hidden;
+
+  display: flex;
+
+  border: 1px solid
+    rgba(128, 93, 160, 0.15);
+}
+
+.light-preview {
+  background: #f7f5fb;
+}
+
+.light-preview .preview-sidebar {
+  width: 27%;
+
+  background: #fff;
+  border-right: 1px solid #e6deec;
+}
+
+.light-preview .preview-content {
+  flex: 1;
+
+  padding: 14px;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 9px;
+}
+
+.light-preview
+.preview-content span {
+  display: block;
+
+  height: 14px;
+
+  border-radius: 6px;
+
+  background: #fff;
+
+  border: 1px solid #e6ddec;
+}
+
+.light-preview
+.preview-content span:first-child {
+  width: 62%;
+}
+
+.dark-preview {
+  background: #080b12;
+}
+
+.dark-preview .preview-sidebar {
+  width: 27%;
+
+  background: #0c111a;
+
+  border-right: 1px solid #202936;
+}
+
+.dark-preview .preview-content {
+  flex: 1;
+
+  padding: 14px;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 9px;
+}
+
+.dark-preview
+.preview-content span {
+  display: block;
+
+  height: 14px;
+
+  border-radius: 6px;
+
+  background: #111824;
+
+  border: 1px solid #222d3b;
+}
+
+.dark-preview
+.preview-content span:first-child {
+  width: 62%;
+}
+
+.theme-card-bottom {
+  margin-top: 9px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.theme-card-bottom > div {
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.theme-card-bottom strong {
+  display: flex;
+  align-items: center;
+
+  gap: 6px;
+
+  color: var(--pp-text);
+
+  font-size: 11px;
+}
+
+.theme-card-bottom small {
+  color: var(--pp-muted);
+
+  font-size: 9px;
+}
+
+/* =========================================================
+   LANGUAGE
+========================================================= */
+
+.settings-language-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      5,
+      minmax(0, 1fr)
+    );
+
+  gap: 8px;
+}
+
+.settings-language {
+  position: relative;
+
+  min-height: 64px;
+
+  padding: 9px;
+
+  border:
+    1px solid
+    var(--pp-border);
+
+  border-radius: 11px;
+
+  background:
+    var(--pp-card);
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+
+  gap: 8px;
+
+  text-align: left;
+
+  color: var(--pp-text);
+
+  cursor: pointer;
+
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.settings-language:hover {
+  transform: translateY(-1px);
+
+  border-color:
+    var(--pp-accent-border);
+}
+
+.settings-language.selected {
+  border-color:
+    var(--pp-accent);
+
+  background:
+    var(--pp-accent-soft);
+}
+
+.language-flag {
+  flex: 0 0 auto;
+
+  font-size: 18px;
+}
+
+.language-names {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 2px;
+}
+
+.language-names strong {
+  color: var(--pp-text);
+
+  font-size: 11px;
+}
+
+.language-names small {
+  color: var(--pp-muted);
+
+  font-size: 8px;
+}
+
+.selected-check {
+  flex: 0 0 auto;
+
+  margin-left: auto;
+
+  width: 18px;
+  height: 18px;
+
+  border-radius: 50%;
+
+  background:
+    var(--pp-accent);
+
+  color: #fff;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.language-note {
+  margin-top: 11px;
+
+  padding: 10px 11px;
+
+  border-radius: 10px;
+
+  background:
+    var(--pp-accent-soft);
+
+  color: var(--pp-accent-text);
+
+  display: flex;
+  align-items: flex-start;
+
+  gap: 7px;
+
+  font-size: 9px;
+
+  line-height: 1.5;
+}
+
+/* =========================================================
+   ACCOUNT
+========================================================= */
+
+.account-card {
+  padding: 12px;
+
+  border:
+    1px solid
+    var(--pp-border);
+
+  border-radius: 12px;
+
+  background:
+    var(--pp-surface);
+
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+}
+
+.account-avatar {
+  flex: 0 0 40px;
+
+  width: 40px;
+  height: 40px;
+
+  border-radius: 12px;
+
+  background:
+    linear-gradient(
+      135deg,
+      var(--pp-accent),
+      #5e42b6
+    );
+
+  color: #fff;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.account-info {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.account-info strong {
+  color: var(--pp-text);
+  font-size: 12px;
+}
+
+.account-info span {
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  color: var(--pp-muted);
+
+  font-size: 9px;
+}
+
+/* =========================================================
+   LOGOUT
+========================================================= */
+
+.logout-section {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  padding: 17px;
+
+  border:
+    1px solid
+    var(--pp-danger-border);
+
+  border-radius: 15px;
+
+  background:
+    var(--pp-danger-soft);
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 15px;
+}
+
+.logout-title {
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  color: var(--pp-danger);
+
+  font-size: 12px;
+}
+
+.logout-section p {
+  margin: 5px 0 0;
+
+  color: var(--pp-muted);
+
+  font-size: 9px;
+}
+
+.logout-button {
+  min-height: 38px;
+
+  padding: 0 13px;
+
+  border:
+    1px solid
+    var(--pp-danger);
+
+  border-radius: 9px;
+
+  background:
+    var(--pp-card);
+
+  color:
+    var(--pp-danger);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 6px;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  background:
+    var(--pp-danger);
+
+  color: #fff;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 900px) {
+  .settings-page {
+    padding: 18px 14px 25px;
+  }
+
+  .settings-language-grid {
+    grid-template-columns:
+      repeat(
+        3,
+        minmax(0, 1fr)
+      );
+  }
+}
+
+@media (max-width: 620px) {
+  .theme-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-language-grid {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+  }
+
+  .logout-section {
+    align-items: stretch;
+
+    flex-direction: column;
+  }
+
+  .logout-button {
+    width: 100%;
+  }
+}
+
+/* =========================================================
+   GLOBAL DARK/LIGHT THEME
+========================================================= */
+
+:root {
+  --pp-bg: #f7f5fb;
+  --pp-card: #ffffff;
+  --pp-surface: #fbfaff;
+  --pp-text: #2f2738;
+  --pp-muted: #8d8295;
+  --pp-border: #e8dfed;
+  --pp-accent: #7f40c0;
+  --pp-accent-soft: #f2e8fb;
+  --pp-accent-border: #b792d2;
+  --pp-accent-text: #704092;
+  --pp-success: #168b57;
+  --pp-success-soft: #eaf8f0;
+  --pp-danger: #c33838;
+  --pp-danger-soft: #fff3f3;
+  --pp-danger-border: #f0bcbc;
+  --pp-shadow: rgba(50, 26, 65, 0.045);
+  --pp-shadow-accent: rgba(122, 59, 180, 0.12);
+}
+
+html[data-theme="dark"],
+body[data-theme="dark"] {
+  --pp-bg: #06080d;
+  --pp-card: #0b1018;
+  --pp-surface: #0e141e;
+  --pp-text: #f1f5f9;
+  --pp-muted: #95a1b2;
+  --pp-border: #202a38;
+  --pp-accent: #9b6bdf;
+  --pp-accent-soft: rgba(137, 83, 204, 0.14);
+  --pp-accent-border: #7350a7;
+  --pp-accent-text: #c8a7f4;
+  --pp-success: #52c991;
+  --pp-success-soft: rgba(34, 160, 101, 0.13);
+  --pp-danger: #f17878;
+  --pp-danger-soft: rgba(183, 54, 54, 0.12);
+  --pp-danger-border: #6e3030;
+  --pp-shadow: rgba(0, 0, 0, 0.25);
+  --pp-shadow-accent: rgba(139, 92, 206, 0.16);
+}
+
+html {
+  background: var(--pp-bg);
+}
+
+body {
+  background:
+    var(--pp-bg);
+
+  color:
+    var(--pp-text);
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+/* =========================================================
+   DARK OVERRIDES FOR EXISTING PAPERPAL PAGES
+   ========================================================= */
+
+body[data-theme="dark"] .chat-page,
+body[data-theme="dark"] .learn-page,
+body[data-theme="dark"] .career-page,
+body[data-theme="dark"] .bills-page,
+body[data-theme="dark"] .settings-page {
+  color: var(--pp-text);
+}
+
+body[data-theme="dark"] .chat-main,
+body[data-theme="dark"] .chat-sidebar,
+body[data-theme="dark"] .chat-composer,
+body[data-theme="dark"] .bill-card,
+body[data-theme="dark"] .bill-ai-panel,
+body[data-theme="dark"] .bill-actions,
+body[data-theme="dark"] .bill-info-strip,
+body[data-theme="dark"] .info-item,
+body[data-theme="dark"] .settings-section,
+body[data-theme="dark"] .logout-section {
+  background: var(--pp-card);
+  border-color: var(--pp-border);
+}
+
+body[data-theme="dark"] .chat-title-row h1,
+body[data-theme="dark"] .chat-welcome h2,
+body[data-theme="dark"] .bill-card-head h2,
+body[data-theme="dark"] .bills-header h1,
+body[data-theme="dark"] .bill-result h2,
+body[data-theme="dark"] .settings-header h1,
+body[data-theme="dark"] .settings-section-heading h2 {
+  color: var(--pp-text);
+}
+
+body[data-theme="dark"] .chat-title-row p,
+body[data-theme="dark"] .chat-welcome p,
+body[data-theme="dark"] .bills-header p,
+body[data-theme="dark"] .bill-card-head p,
+body[data-theme="dark"] .settings-header p,
+body[data-theme="dark"] .settings-section-heading p {
+  color: var(--pp-muted);
+}
+
+body[data-theme="dark"] .chat-composer textarea,
+body[data-theme="dark"] .language-card,
+body[data-theme="dark"] .settings-language,
+body[data-theme="dark"] .theme-card,
+body[data-theme="dark"] .upload-card,
+body[data-theme="dark"] .bill-type,
+body[data-theme="dark"] .default-language-control,
+body[data-theme="dark"] .bills-reset-button {
+  background: var(--pp-surface);
+  color: var(--pp-text);
+  border-color: var(--pp-border);
+}
+
+body[data-theme="dark"] .chat-content,
+body[data-theme="dark"] .chat-thinking,
+body[data-theme="dark"] .chat-suggestions button {
+  background: var(--pp-surface);
+  border-color: var(--pp-border);
+  color: var(--pp-text);
+}
+
+body[data-theme="dark"] .chat-message.user .chat-content {
+  color: #fff;
+  background: linear-gradient(135deg, #7040ae, #57348f);
+  border-color: #7040ae;
+}
+
+body[data-theme="dark"] .language-card.selected,
+body[data-theme="dark"] .bill-type.selected,
+body[data-theme="dark"] .settings-language.selected,
+body[data-theme="dark"] .theme-card.selected {
+  background: var(--pp-accent-soft);
+  border-color: var(--pp-accent);
+}
+
+body[data-theme="dark"] .chat-heading h1,
+body[data-theme="dark"] .chat-sidebar-header strong,
+body[data-theme="dark"] .chat-history-text span,
+body[data-theme="dark"] .chat-content,
+body[data-theme="dark"] .bill-result h2,
+body[data-theme="dark"] .result-scroll pre,
+body[data-theme="dark"] .info-item strong,
+body[data-theme="dark"] .language-names strong {
+  color: var(--pp-text);
+}
+
+/* Generic dark surfaces used across the existing app. */
+body[data-theme="dark"] .career-card,
+body[data-theme="dark"] .career-modal,
+body[data-theme="dark"] .resume-builder,
+body[data-theme="dark"] .tool-card,
+body[data-theme="dark"] .conversation-card,
+body[data-theme="dark"] .progress-card,
+body[data-theme="dark"] .learning-toolbar,
+body[data-theme="dark"] .quick-topics-bar,
+body[data-theme="dark"] .prompt-box,
+body[data-theme="dark"] .helper-card {
+  background: var(--pp-card);
+  border-color: var(--pp-border);
+}
+
+body[data-theme="dark"] input,
+body[data-theme="dark"] textarea,
+body[data-theme="dark"] select {
+  color: var(--pp-text);
+}
+
+body[data-theme="dark"] ::placeholder {
+  color: #718096;
+}
+
+/* Keep login screen independently styled. */
+body[data-theme="dark"] .login-page,
+body[data-theme="dark"] .login-card {
+  color: inherit;
+}

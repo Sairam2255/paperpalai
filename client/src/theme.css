@@ -1,0 +1,505 @@
+/* =========================================================
+   PAPERPAL GLOBAL THEME
+   ========================================================= */
+
+:root {
+  --pp-bg: #f7f5fb;
+  --pp-card: #ffffff;
+  --pp-surface: #fbfaff;
+  --pp-text: #2f2738;
+  --pp-muted: #8d8295;
+  --pp-border: #e8dfed;
+
+  --pp-accent: #7f40c0;
+  --pp-accent-soft: #f2e8fb;
+  --pp-accent-border: #b792d2;
+  --pp-accent-text: #704092;
+
+  --pp-success: #168b57;
+  --pp-danger: #c33838;
+}
+
+/* =========================================================
+   DARK VARIABLES
+   ========================================================= */
+
+html[data-theme="dark"],
+body[data-theme="dark"] {
+  --pp-bg: #06080d;
+  --pp-card: #0b1018;
+  --pp-surface: #0e141e;
+
+  --pp-text: #f1f5f9;
+  --pp-muted: #9aa6b7;
+  --pp-border: #202a38;
+
+  --pp-accent: #9b6bdf;
+  --pp-accent-soft: rgba(155, 107, 223, 0.14);
+  --pp-accent-border: #7350a7;
+  --pp-accent-text: #d0b4f7;
+
+  --pp-success: #52c991;
+  --pp-danger: #f17878;
+}
+
+/* =========================================================
+   ROOT / FULL SCREEN
+   ========================================================= */
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+html {
+  background: var(--pp-bg);
+}
+
+body {
+  background: var(--pp-bg);
+  color: var(--pp-text);
+
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
+}
+
+/* =========================================================
+   APP CONTENT MUST USE AVAILABLE SCREEN
+   ========================================================= */
+
+.app-layout {
+  width: 100%;
+  min-height: 100vh;
+  background: var(--pp-bg);
+}
+
+.app-content {
+  flex: 1 1 auto;
+  width: calc(100% - 248px);
+  max-width: none !important;
+  min-width: 0;
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: var(--pp-bg);
+}
+
+/*
+   Remove old A4-style centered restrictions from pages
+   inside the main application area.
+*/
+.app-content > * {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Common page roots */
+.app-content main,
+.app-content section,
+.app-content article {
+  box-sizing: border-box;
+}
+
+/* =========================================================
+   DARK BACKGROUND
+   ========================================================= */
+
+html[data-theme="dark"] .app-content,
+body[data-theme="dark"] .app-content {
+  background: #06080d !important;
+  color: #f1f5f9 !important;
+}
+
+/* =========================================================
+   LIBRARY - FULL WIDTH
+   ========================================================= */
+
+/*
+   These rules intentionally cover multiple possible
+   Library root/container names.
+*/
+
+html[data-theme="dark"] .library-page,
+html[data-theme="dark"] .library-container,
+html[data-theme="dark"] .library-content,
+html[data-theme="dark"] .library-main,
+body[data-theme="dark"] .library-page,
+body[data-theme="dark"] .library-container,
+body[data-theme="dark"] .library-content,
+body[data-theme="dark"] .library-main {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+
+  background: #06080d !important;
+  color: #f1f5f9 !important;
+}
+
+/* =========================================================
+   LIBRARY HEADINGS
+   ========================================================= */
+
+html[data-theme="dark"] .library-page h1,
+html[data-theme="dark"] .library-page h2,
+html[data-theme="dark"] .library-page h3,
+html[data-theme="dark"] .library-page h4,
+html[data-theme="dark"] .library-page strong,
+body[data-theme="dark"] .library-page h1,
+body[data-theme="dark"] .library-page h2,
+body[data-theme="dark"] .library-page h3,
+body[data-theme="dark"] .library-page h4,
+body[data-theme="dark"] .library-page strong {
+  color: #f1f5f9 !important;
+}
+
+/* Library paragraph/text */
+html[data-theme="dark"] .library-page p,
+html[data-theme="dark"] .library-page span,
+html[data-theme="dark"] .library-page label,
+body[data-theme="dark"] .library-page p,
+body[data-theme="dark"] .library-page span,
+body[data-theme="dark"] .library-page label {
+  color: #aeb8c7 !important;
+}
+
+/* =========================================================
+   LIBRARY WHITE CARDS
+   ========================================================= */
+
+/*
+   Covers cards even when the original Library CSS
+   explicitly uses background: white / #fff.
+*/
+
+html[data-theme="dark"] .library-page [class*="card"],
+html[data-theme="dark"] .library-page [class*="upload"],
+html[data-theme="dark"] .library-page [class*="document"],
+html[data-theme="dark"] .library-page [class*="header-card"],
+body[data-theme="dark"] .library-page [class*="card"],
+body[data-theme="dark"] .library-page [class*="upload"],
+body[data-theme="dark"] .library-page [class*="document"],
+body[data-theme="dark"] .library-page [class*="header-card"] {
+  background: #0b1018 !important;
+  color: #f1f5f9 !important;
+  border-color: #202a38 !important;
+}
+
+/* =========================================================
+   INLINE WHITE BACKGROUND FIX
+   ========================================================= */
+
+/*
+   Your older page styles appear to use white cards directly.
+   These attribute selectors override those inline/style rules.
+*/
+
+html[data-theme="dark"] .app-content [style*="background: white"],
+html[data-theme="dark"] .app-content [style*="background:white"],
+html[data-theme="dark"] .app-content [style*="background: #fff"],
+html[data-theme="dark"] .app-content [style*="background:#fff"],
+html[data-theme="dark"] .app-content [style*="background-color: white"],
+html[data-theme="dark"] .app-content [style*="background-color: #fff"],
+body[data-theme="dark"] .app-content [style*="background: white"],
+body[data-theme="dark"] .app-content [style*="background:white"],
+body[data-theme="dark"] .app-content [style*="background: #fff"],
+body[data-theme="dark"] .app-content [style*="background:#fff"],
+body[data-theme="dark"] .app-content [style*="background-color: white"],
+body[data-theme="dark"] .app-content [style*="background-color: #fff"] {
+  background: #0b1018 !important;
+}
+
+/* =========================================================
+   INLINE DARK TEXT FIX
+   ========================================================= */
+
+html[data-theme="dark"] .library-page [style*="color: #111"],
+html[data-theme="dark"] .library-page [style*="color:#111"],
+html[data-theme="dark"] .library-page [style*="color: black"],
+html[data-theme="dark"] .library-page [style*="color:black"],
+body[data-theme="dark"] .library-page [style*="color: #111"],
+body[data-theme="dark"] .library-page [style*="color:#111"],
+body[data-theme="dark"] .library-page [style*="color: black"],
+body[data-theme="dark"] .library-page [style*="color:black"] {
+  color: #f1f5f9 !important;
+}
+
+/* =========================================================
+   INPUTS
+   ========================================================= */
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] select,
+body[data-theme="dark"] input,
+body[data-theme="dark"] textarea,
+body[data-theme="dark"] select {
+  background: #0b1018 !important;
+  color: #f1f5f9 !important;
+  border-color: #202a38 !important;
+}
+
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder,
+body[data-theme="dark"] input::placeholder,
+body[data-theme="dark"] textarea::placeholder {
+  color: #748094 !important;
+}
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+html[data-theme="dark"] button:not(.sidebar-new-chat),
+body[data-theme="dark"] button:not(.sidebar-new-chat) {
+  color: inherit;
+}
+
+/* =========================================================
+   DOCUMENT CARDS / COMMON SURFACES
+   ========================================================= */
+
+html[data-theme="dark"] .document-card,
+html[data-theme="dark"] .document-item,
+html[data-theme="dark"] .upload-card,
+html[data-theme="dark"] .upload-section,
+html[data-theme="dark"] .library-card,
+html[data-theme="dark"] .document-upload-card,
+body[data-theme="dark"] .document-card,
+body[data-theme="dark"] .document-item,
+body[data-theme="dark"] .upload-card,
+body[data-theme="dark"] .upload-section,
+body[data-theme="dark"] .library-card,
+body[data-theme="dark"] .document-upload-card {
+  background: #0b1018 !important;
+  color: #f1f5f9 !important;
+  border-color: #202a38 !important;
+}
+
+/* =========================================================
+   DOCUMENT TITLES
+   ========================================================= */
+
+html[data-theme="dark"] .document-card h1,
+html[data-theme="dark"] .document-card h2,
+html[data-theme="dark"] .document-card h3,
+html[data-theme="dark"] .document-card h4,
+html[data-theme="dark"] .document-item h1,
+html[data-theme="dark"] .document-item h2,
+html[data-theme="dark"] .document-item h3,
+html[data-theme="dark"] .document-item h4,
+body[data-theme="dark"] .document-card h1,
+body[data-theme="dark"] .document-card h2,
+body[data-theme="dark"] .document-card h3,
+body[data-theme="dark"] .document-card h4,
+body[data-theme="dark"] .document-item h1,
+body[data-theme="dark"] .document-item h2,
+body[data-theme="dark"] .document-item h3,
+body[data-theme="dark"] .document-item h4 {
+  color: #f1f5f9 !important;
+}
+
+/* =========================================================
+   DOCUMENT META
+   ========================================================= */
+
+html[data-theme="dark"] .document-card p,
+html[data-theme="dark"] .document-card span,
+html[data-theme="dark"] .document-item p,
+html[data-theme="dark"] .document-item span,
+body[data-theme="dark"] .document-card p,
+body[data-theme="dark"] .document-card span,
+body[data-theme="dark"] .document-item p,
+body[data-theme="dark"] .document-item span {
+  color: #9da9ba !important;
+}
+
+/* =========================================================
+   FULL WIDTH GRIDS
+   ========================================================= */
+
+html[data-theme="dark"] .library-page > div,
+body[data-theme="dark"] .library-page > div {
+  box-sizing: border-box;
+}
+
+/* =========================================================
+   GLOBAL SCROLL
+   ========================================================= */
+
+html[data-theme="dark"] ::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+html[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: #06080d;
+}
+
+html[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #293242;
+  border-radius: 10px;
+}
+
+html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #3b4658;
+} /* =========================================================
+   HOME PAGE - DARK MODE CARD VISIBILITY FIX
+   ========================================================= */
+
+/* Home background */
+html[data-theme="dark"] .home-page,
+body[data-theme="dark"] .home-page {
+  background: #06080d !important;
+  color: #f1f5f9 !important;
+}
+
+/* ---------------------------------------------------------
+   Feature cards
+   --------------------------------------------------------- */
+
+html[data-theme="dark"] .home-page .feature-card,
+html[data-theme="dark"] .home-page .home-card,
+html[data-theme="dark"] .home-page .tool-card,
+html[data-theme="dark"] .home-page .action-card,
+body[data-theme="dark"] .home-page .feature-card,
+body[data-theme="dark"] .home-page .home-card,
+body[data-theme="dark"] .home-page .tool-card,
+body[data-theme="dark"] .home-page .action-card {
+  background: #0b1018 !important;
+  color: #f1f5f9 !important;
+  border-color: #202a38 !important;
+}
+
+/* ---------------------------------------------------------
+   Card headings
+   --------------------------------------------------------- */
+
+html[data-theme="dark"] .home-page .feature-card h1,
+html[data-theme="dark"] .home-page .feature-card h2,
+html[data-theme="dark"] .home-page .feature-card h3,
+html[data-theme="dark"] .home-page .feature-card h4,
+html[data-theme="dark"] .home-page .home-card h1,
+html[data-theme="dark"] .home-page .home-card h2,
+html[data-theme="dark"] .home-page .home-card h3,
+html[data-theme="dark"] .home-page .home-card h4,
+body[data-theme="dark"] .home-page .feature-card h1,
+body[data-theme="dark"] .home-page .feature-card h2,
+body[data-theme="dark"] .home-page .feature-card h3,
+body[data-theme="dark"] .home-page .feature-card h4,
+body[data-theme="dark"] .home-page .home-card h1,
+body[data-theme="dark"] .home-page .home-card h2,
+body[data-theme="dark"] .home-page .home-card h3,
+body[data-theme="dark"] .home-page .home-card h4 {
+  color: #f5f7fb !important;
+}
+
+/* ---------------------------------------------------------
+   Card descriptions
+   --------------------------------------------------------- */
+
+html[data-theme="dark"] .home-page .feature-card p,
+html[data-theme="dark"] .home-page .home-card p,
+html[data-theme="dark"] .home-page .tool-card p,
+html[data-theme="dark"] .home-page .action-card p,
+body[data-theme="dark"] .home-page .feature-card p,
+body[data-theme="dark"] .home-page .home-card p,
+body[data-theme="dark"] .home-page .tool-card p,
+body[data-theme="dark"] .home-page .action-card p {
+  color: #aeb8c7 !important;
+}
+
+/* ---------------------------------------------------------
+   Card spans / labels
+   --------------------------------------------------------- */
+
+html[data-theme="dark"] .home-page .feature-card span,
+html[data-theme="dark"] .home-page .home-card span,
+body[data-theme="dark"] .home-page .feature-card span,
+body[data-theme="dark"] .home-page .home-card span {
+  color: #aeb8c7 !important;
+}
+
+/* ---------------------------------------------------------
+   Explicitly fix the 3 main Home cards
+   --------------------------------------------------------- */
+
+html[data-theme="dark"] .home-page .bill-card,
+body[data-theme="dark"] .home-page .bill-card {
+  background: #0b1018 !important;
+  color: #f5f7fb !important;
+}
+
+html[data-theme="dark"] .home-page .career-card,
+body[data-theme="dark"] .home-page .career-card {
+  background: #0b1018 !important;
+  color: #f5f7fb !important;
+}
+
+html[data-theme="dark"] .home-page .learn-card,
+body[data-theme="dark"] .home-page .learn-card {
+  background: #0b1018 !important;
+  color: #f5f7fb !important;
+}
+
+/* Titles inside the three cards */
+html[data-theme="dark"] .home-page .bill-card h2,
+html[data-theme="dark"] .home-page .career-card h2,
+html[data-theme="dark"] .home-page .learn-card h2,
+body[data-theme="dark"] .home-page .bill-card h2,
+body[data-theme="dark"] .home-page .career-card h2,
+body[data-theme="dark"] .home-page .learn-card h2 {
+  color: #f5f7fb !important;
+}
+
+/* Text inside the three cards */
+html[data-theme="dark"] .home-page .bill-card p,
+html[data-theme="dark"] .home-page .career-card p,
+html[data-theme="dark"] .home-page .learn-card p,
+body[data-theme="dark"] .home-page .bill-card p,
+body[data-theme="dark"] .home-page .career-card p,
+body[data-theme="dark"] .home-page .learn-card p {
+  color: #aeb8c7 !important;
+}
+
+/* ---------------------------------------------------------
+   Arrow icons
+   --------------------------------------------------------- */
+
+html[data-theme="dark"] .home-page .feature-card svg,
+html[data-theme="dark"] .home-page .home-card svg,
+html[data-theme="dark"] .home-page .bill-card svg,
+html[data-theme="dark"] .home-page .career-card svg,
+html[data-theme="dark"] .home-page .learn-card svg,
+body[data-theme="dark"] .home-page .feature-card svg,
+body[data-theme="dark"] .home-page .home-card svg,
+body[data-theme="dark"] .home-page .bill-card svg,
+body[data-theme="dark"] .home-page .career-card svg,
+body[data-theme="dark"] .home-page .learn-card svg {
+  color: #aeb8c7 !important;
+}
+
+/* ---------------------------------------------------------
+   Prevent white inline card backgrounds
+   --------------------------------------------------------- */
+
+html[data-theme="dark"] .home-page [style*="background: white"],
+html[data-theme="dark"] .home-page [
+style*="background:white"],
+html[data-theme="dark"] .home-page [style*="background: #fff"],
+html[data-theme="dark"] .home-page [style*="background:#fff"],
+html[data-theme="dark"] .home-page [style*="background-color: white"],
+html[data-theme="dark"] .home-page [style*="background-color: #fff"],
+body[data-theme="dark"] .home-page [style*="background: white"],
+body[data-theme="dark"] .home-page [style*="background:white"],
+body[data-theme="dark"] .home-page [style*="background: #fff"],
+body[data-theme="dark"] .home-page [style*="background:#fff"],
+body[data-theme="dark"] .home-page [style*="background-color: white"],
+body[data-theme="dark"] .home-page [style*="background-color: #fff"] {
+  background: #0b1018 !important;
+}
