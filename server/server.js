@@ -4,31 +4,45 @@ require("dotenv").config();
 
 const connectDB = require("./config/db");
 
+// ==========================================
+// ROUTES
+// ==========================================
 const authRoutes = require("./routes/authRoutes");
 const documentRoutes = require("./routes/documentRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const careerRoutes = require("./routes/careerRoutes");
 const interviewRoutes = require("./routes/interviewRoutes");
 const resumeRoutes = require("./routes/resumeRoutes");
+const chatRoutes = require("./routes/chatRoutes");
 
+// ==========================================
+// APP
+// ==========================================
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// ==========================================
+// DATABASE
+// ==========================================
 connectDB();
 
 // ==========================================
 // CORS
 // ==========================================
+
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
-];
+
+  // Production frontend
+  process.env.CLIENT_URL,
+].filter(Boolean);
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests without an origin
+      // Allow requests that don't contain an Origin header
       // such as Postman/server-side requests.
       if (!origin) {
         return callback(null, true);
@@ -38,11 +52,19 @@ app.use(
         return callback(null, true);
       }
 
+      console.error(
+        `CORS blocked origin: ${origin}`
+      );
+
       return callback(
-        new Error(`CORS blocked origin: ${origin}`)
+        new Error(
+          `CORS blocked origin: ${origin}`
+        )
       );
     },
+
     credentials: true,
+
     methods: [
       "GET",
       "POST",
@@ -51,6 +73,7 @@ app.use(
       "DELETE",
       "OPTIONS",
     ],
+
     allowedHeaders: [
       "Content-Type",
       "Authorization",
@@ -59,7 +82,7 @@ app.use(
 );
 
 // ==========================================
-// JSON
+// BODY PARSER
 // ==========================================
 app.use(
   express.json({
@@ -68,7 +91,7 @@ app.use(
 );
 
 // ==========================================
-// GOOGLE POPUP COMPATIBILITY
+// GOOGLE POPUP / CROSS-ORIGIN COMPATIBILITY
 // ==========================================
 app.use((req, res, next) => {
   res.setHeader(
@@ -80,44 +103,91 @@ app.use((req, res, next) => {
 });
 
 // ==========================================
-// ROUTES
+// API ROUTES
 // ==========================================
-app.use("/api/auth", authRoutes);
-app.use("/api/documents", documentRoutes);
-app.use("/api/ai", aiRoutes);
-app.use("/api/career", careerRoutes);
-app.use("/api/interview", interviewRoutes);
-app.use("/api/resume", resumeRoutes);
+app.use(
+  "/api/auth",
+  authRoutes
+);
+
+app.use(
+  "/api/documents",
+  documentRoutes
+);
+
+app.use(
+  "/api/ai",
+  aiRoutes
+);
+
+app.use(
+  "/api/career",
+  careerRoutes
+);
+
+app.use(
+  "/api/interview",
+  interviewRoutes
+);
+
+app.use(
+  "/api/resume",
+  resumeRoutes
+);
+
+app.use(
+  "/api/chat",
+  chatRoutes
+);
 
 // ==========================================
-// ROOT
+// HEALTH CHECK
 // ==========================================
 app.get("/", (req, res) => {
   res.status(200).json({
-    message: "PaperPal AI Backend is Running 🚀",
+    message:
+      "PaperPal AI Backend is Running 🚀",
   });
 });
 
 // ==========================================
-// 404
+// 404 HANDLER
 // ==========================================
 app.use((req, res) => {
   res.status(404).json({
-    message: `Route not found: ${req.method} ${req.originalUrl}`,
+    message:
+      `Route not found: ${req.method} ${req.originalUrl}`,
   });
 });
 
 // ==========================================
 // ERROR HANDLER
 // ==========================================
-app.use((error, req, res, next) => {
-  console.error("Server Error:", error);
+app.use(
+  (error, req, res, next) => {
+    console.error(
+      "Server Error:",
+      error
+    );
 
-  res.status(500).json({
-    message:
-      error.message || "Internal server error.",
-  });
-});
+    // CORS errors
+    if (
+      error.message?.startsWith(
+        "CORS blocked origin:"
+      )
+    ) {
+      return res.status(403).json({
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      message:
+        error.message ||
+        "Internal server error.",
+    });
+  }
+);
 
 // ==========================================
 // START SERVER
@@ -125,5 +195,10 @@ app.use((error, req, res, next) => {
 app.listen(PORT, () => {
   console.log(
     `PaperPal AI server running on port ${PORT} 🚀`
+  );
+
+  console.log(
+    "Allowed origins:",
+    allowedOrigins
   );
 });
