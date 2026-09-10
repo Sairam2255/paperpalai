@@ -31,19 +31,20 @@ connectDB();
 // ==========================================
 
 const allowedOrigins = [
+  // Local development
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
 
   // Production frontend
-  process.env.CLIENT_URL,
-].filter(Boolean);
+  "https://paperpalai.vercel.app",
+];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests that don't contain an Origin header
-      // such as Postman/server-side requests.
+      // Allow requests with no Origin header
+      // such as Postman or server-side requests.
       if (!origin) {
         return callback(null, true);
       }
@@ -105,6 +106,7 @@ app.use((req, res, next) => {
 // ==========================================
 // API ROUTES
 // ==========================================
+
 app.use(
   "/api/auth",
   authRoutes
