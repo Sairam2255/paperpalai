@@ -1,271 +1,900 @@
+// server/services/geminiService.js
+
 const { GoogleGenAI } = require("@google/genai");
+const {
+  getCurrentApiKey,
+} = require("../utils/aiContext");
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
+/* =========================================================
+   CONFIG
+========================================================= */
 
-const MODEL = "gemini-3.6-flash";
+const MODEL =
+  process.env.GEMINI_MODEL ||
+  "gemini-3.6-flash";
 
+const QUIZ_MODEL =
+  process.env.GEMINI_QUIZ_MODEL ||
+  process.env.GEMINI_MODEL ||
+  "gemini-3.6-flash";
 
-/* =====================================================
-   COMMON AI FUNCTION
-===================================================== */
+const MAX_RETRIES = Math.max(
+  0,
+  Number(
+    process.env.GEMINI_MAX_RETRIES || 2
+  )
+);
 
-const generateAIContent = async (prompt) => {
-  try {
-    const response =
-      await ai.models.generateContent({
-        model: MODEL,
-        contents: prompt,
-      });
+const DEFAULT_MAX_OUTPUT_TOKENS =
+  Math.max(
+    400,
+    Number(
+      process.env.GEMINI_MAX_OUTPUT_TOKENS ||
+        1600
+    )
+  );
 
-    if (!response || !response.text) {
-      throw new Error(
-        "AI returned an empty response."
-      );
-    }
+/* =========================================================
+   BASIC HELPERS
+========================================================= */
 
-    return response.text;
-  } catch (error) {
-    console.error(
-      "Gemini Error:",
-      error.message
-    );
+const sleep = (ms) =>
+  new Promise((resolve) =>
+    setTimeout(resolve, ms)
+  );
 
-    const code =
-      error?.status ||
+const getErrorCode = (error) =>
+  Number(
+    error?.status ||
       error?.code ||
-      error?.error?.code;
+      error?.response?.status ||
+      error?.error?.code ||
+      0
+  );
 
-    if (Number(code) === 429) {
-      throw new Error(
-        "AI usage limit reached. Please wait and try again later."
-      );
-    }
+const getErrorMessage = (error) =>
+  String(
+    error?.message ||
+      error?.response?.data?.message ||
+      error?.error?.message ||
+      error ||
+      ""
+  );
 
-    if (
-      Number(code) === 401 ||
-      Number(code) === 403
-    ) {
-      throw new Error(
-        "AI authentication failed. Please check your Gemini API key."
-      );
-    }
+const isQuotaError = (error) => {
+  const message =
+    getErrorMessage(error).toLowerCase();
 
-    if (Number(code) === 404) {
-      throw new Error(
-        "AI model unavailable. Please try again later."
-      );
-    }
-
-    throw new Error(
-      error?.message ||
-        "AI service is temporarily unavailable."
-    );
-  }
+  return (
+    message.includes(
+      "quota_exceeded"
+    ) ||
+    message.includes(
+      "quota exceeded"
+    ) ||
+    message.includes(
+      "resource exhausted"
+    ) ||
+    message.includes(
+      "daily limit"
+    ) ||
+    message.includes(
+      "usage limit"
+    ) ||
+    message.includes(
+      "rate limit exceeded"
+    )
+  );
 };
 
-
-/* =====================================================
-   DOCUMENT SUMMARY
-===================================================== */
-
-const generateSummary = async (text) => {
-  return generateAIContent(`
-You are PaperPal AI.
-
-Summarize the following document clearly.
-
-Use simple language.
-Keep important dates, amounts, names and facts.
-Do not invent information.
-
-DOCUMENT:
-
-${text}
-`);
-};
-
-
-/* =====================================================
-   DOCUMENT QUESTION
-===================================================== */
-
-const askQuestion = async (
-  text,
-  question
+const isAuthenticationError = (
+  error
 ) => {
-  return generateAIContent(`
+  const code =
+    getErrorCode(error);
+
+  const message =
+    getErrorMessage(error).toLowerCase();
+
+  return (
+    code === 401 ||
+    code === 403 ||
+    message.includes(
+      "invalid api key"
+    ) ||
+    message.includes(
+      "api key not valid"
+    ) ||
+    message.includes(
+      "authentication"
+    ) ||
+    message.includes(
+      "unauthorized"
+    ) ||
+    message.includes(
+      "forbidden"
+    )
+  );
+};
+
+const isRetryableError = (
+  error
+) => {
+  const code =
+    getErrorCode(error);
+
+  return (
+    code === 429 ||
+    code === 500 ||
+    code === 502 ||
+    code === 503 ||
+    code === 504
+  );
+};
+
+/* =========================================================
+   ERROR MESSAGES
+========================================================= */
+
+const createFriendlyError = (
+  error
+) => {
+  const code =
+    getErrorCode(error);
+
+  if (isQuotaError(error)) {
+    const friendly =
+      new Error(
+        "Gemini quota is exhausted for this API key. Add a personal Gemini API key in PaperPal Settings or use a Gemini project with available quota."
+      );
+
+    friendly.code =
+      "GEMINI_QUOTA_EXCEEDED";
+
+    friendly.status = 429;
+
+    return friendly;
+  }
+
+  if (
+    isAuthenticationError(error)
+  ) {
+    const friendly =
+      new Error(
+        "The active Gemini API key is invalid or unauthorized. Please add a valid Gemini API key in Settings."
+      );
+
+    friendly.code =
+      "GEMINI_INVALID_KEY";
+
+    friendly.status = code || 401;
+
+    return friendly;
+  }
+
+  if (code === 404) {
+    const friendly =
+      new Error(
+        "The configured Gemini model is unavailable. Check GEMINI_MODEL on the server."
+      );
+
+    friendly.code =
+      "GEMINI_MODEL_NOT_FOUND";
+
+    friendly.status = 404;
+
+    return friendly;
+  }
+
+  if (isRetryableError(error)) {
+    const friendly =
+      new Error(
+        "Gemini is temporarily busy. Please try again in a moment."
+      );
+
+    friendly.code =
+      "GEMINI_TEMPORARY_ERROR";
+
+    friendly.status = code || 503;
+
+    return friendly;
+  }
+
+  const friendly =
+    new Error(
+      getErrorMessage(error) ||
+        "PaperPal AI could not generate a response."
+    );
+
+  friendly.status =
+    code || 500;
+
+  return friendly;
+};
+
+/* =========================================================
+   GEMINI CLIENT
+========================================================= */
+
+const createGeminiClient = (
+  apiKey
+) => {
+  if (!apiKey) {
+    const error =
+      new Error(
+        "No Gemini API key is configured."
+      );
+
+    error.code =
+      "GEMINI_NO_KEY";
+
+    error.status = 500;
+
+    throw error;
+  }
+
+  return new GoogleGenAI({
+    apiKey,
+  });
+};
+
+/* =========================================================
+   RESPONSE TEXT
+========================================================= */
+
+const extractResponseText = (
+  response
+) => {
+  if (!response) {
+    return "";
+  }
+
+  if (
+    typeof response.text ===
+    "string"
+  ) {
+    return response.text.trim();
+  }
+
+  if (
+    typeof response.text ===
+    "function"
+  ) {
+    try {
+      return String(
+        response.text() || ""
+      ).trim();
+    } catch {
+      return "";
+    }
+  }
+
+  if (
+    Array.isArray(
+      response.candidates
+    )
+  ) {
+    return response.candidates
+      .flatMap(
+        (candidate) =>
+          candidate?.content
+            ?.parts || []
+      )
+      .map(
+        (part) =>
+          part?.text || ""
+      )
+      .join("")
+      .trim();
+  }
+
+  return "";
+};
+
+/* =========================================================
+   SINGLE KEY REQUEST
+========================================================= */
+
+const requestWithRetry =
+  async (
+    apiKey,
+    prompt,
+    model,
+    options = {}
+  ) => {
+    const ai =
+      createGeminiClient(
+        apiKey
+      );
+
+    let lastError = null;
+
+    for (
+      let attempt = 0;
+      attempt <= MAX_RETRIES;
+      attempt += 1
+    ) {
+      try {
+        const config = {
+          maxOutputTokens:
+            Number(
+              options.maxOutputTokens ||
+                DEFAULT_MAX_OUTPUT_TOKENS
+            ),
+        };
+
+        if (
+          options.responseMimeType
+        ) {
+          config.responseMimeType =
+            options.responseMimeType;
+        }
+
+        const response =
+          await ai.models.generateContent(
+            {
+              model,
+              contents: prompt,
+              config,
+            }
+          );
+
+        const text =
+          extractResponseText(
+            response
+          );
+
+        if (!text) {
+          throw new Error(
+            "Gemini returned an empty response."
+          );
+        }
+
+        return text;
+      } catch (error) {
+        lastError = error;
+
+        console.error(
+          "Gemini request error:",
+          {
+            model,
+            attempt:
+              attempt + 1,
+            maxAttempts:
+              MAX_RETRIES + 1,
+            code:
+              getErrorCode(
+                error
+              ),
+            message:
+              getErrorMessage(
+                error
+              ),
+          }
+        );
+
+        /*
+         * Never retry genuine quota
+         * or authentication failures.
+         */
+        if (
+          isQuotaError(error) ||
+          isAuthenticationError(
+            error
+          )
+        ) {
+          throw error;
+        }
+
+        const retryable =
+          isRetryableError(
+            error
+          );
+
+        if (
+          !retryable ||
+          attempt >=
+            MAX_RETRIES
+        ) {
+          throw error;
+        }
+
+        const delay =
+          800 *
+            Math.pow(
+              2,
+              attempt
+            ) +
+          Math.floor(
+            Math.random() * 500
+          );
+
+        await sleep(delay);
+      }
+    }
+
+    throw (
+      lastError ||
+      new Error(
+        "Gemini request failed."
+      )
+    );
+  };
+
+/* =========================================================
+   MAIN AI FUNCTION
+========================================================= */
+
+const generateAIContent =
+  async (
+    prompt,
+    model = MODEL,
+    options = {}
+  ) => {
+    const personalKey =
+      String(
+        getCurrentApiKey() || ""
+      ).trim();
+
+    const serverKey =
+      String(
+        process.env
+          .GEMINI_API_KEY || ""
+      ).trim();
+
+    /*
+     * Personal key first.
+     * Server key second.
+     *
+     * Duplicate keys are removed.
+     */
+    const keys = [
+      personalKey,
+      serverKey,
+    ].filter(
+      (
+        key,
+        index,
+        array
+      ) =>
+        key &&
+        array.indexOf(
+          key
+        ) === index
+    );
+
+    if (!keys.length) {
+      const error =
+        new Error(
+          "No Gemini API key is configured. Add your personal Gemini API key in Settings."
+        );
+
+      error.code =
+        "GEMINI_NO_KEY";
+
+      error.status = 500;
+
+      throw error;
+    }
+
+    let lastError = null;
+
+    for (
+      let index = 0;
+      index < keys.length;
+      index += 1
+    ) {
+      const activeKey =
+        keys[index];
+
+      try {
+        return await requestWithRetry(
+          activeKey,
+          prompt,
+          model,
+          options
+        );
+      } catch (error) {
+        lastError = error;
+
+        /*
+         * If personal key has a quota/auth
+         * problem, try server key.
+         *
+         * If server key is the only key,
+         * return the useful error.
+         */
+        const canTryNext =
+          index <
+          keys.length - 1;
+
+        if (
+          canTryNext &&
+          (
+            isQuotaError(
+              error
+            ) ||
+            isAuthenticationError(
+              error
+            )
+          )
+        ) {
+          console.warn(
+            "Active Gemini key failed. Trying the fallback key."
+          );
+
+          continue;
+        }
+
+        throw createFriendlyError(
+          error
+        );
+      }
+    }
+
+    throw createFriendlyError(
+      lastError
+    );
+  };
+
+/* =========================================================
+   JSON CLEANER
+========================================================= */
+
+const parseAIJson = (
+  raw
+) => {
+  let cleaned =
+    String(
+      raw || ""
+    ).trim();
+
+  cleaned =
+    cleaned
+      .replace(
+        /^```json\s*/i,
+        ""
+      )
+      .replace(
+        /^```\s*/i,
+        ""
+      )
+      .replace(
+        /\s*```$/i,
+        ""
+      )
+      .trim();
+
+  try {
+    return JSON.parse(
+      cleaned
+    );
+  } catch {}
+
+  const firstObject =
+    cleaned.indexOf("{");
+
+  const lastObject =
+    cleaned.lastIndexOf("}");
+
+  if (
+    firstObject !== -1 &&
+    lastObject >
+      firstObject
+  ) {
+    try {
+      return JSON.parse(
+        cleaned.slice(
+          firstObject,
+          lastObject + 1
+        )
+      );
+    } catch {}
+  }
+
+  const firstArray =
+    cleaned.indexOf("[");
+
+  const lastArray =
+    cleaned.lastIndexOf("]");
+
+  if (
+    firstArray !== -1 &&
+    lastArray > firstArray
+  ) {
+    try {
+      return JSON.parse(
+        cleaned.slice(
+          firstArray,
+          lastArray + 1
+        )
+      );
+    } catch {}
+  }
+
+  throw new Error(
+    "AI returned invalid JSON."
+  );
+};
+
+/* =========================================================
+   ARRAY / NUMBER HELPERS
+========================================================= */
+
+const toStringArray = (
+  value,
+  limit = 30
+) => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter(
+      (item) =>
+        item !== null &&
+        item !== undefined
+    )
+    .slice(0, limit)
+    .map((item) =>
+      String(item).trim()
+    )
+    .filter(Boolean);
+};
+
+const clamp = (
+  value,
+  min,
+  max
+) => {
+  const number =
+    Number(value);
+
+  if (
+    !Number.isFinite(
+      number
+    )
+  ) {
+    return min;
+  }
+
+  return Math.max(
+    min,
+    Math.min(
+      max,
+      Math.round(number)
+    )
+  );
+};
+
+/* =========================================================
+   DOCUMENT SUMMARY
+========================================================= */
+
+const generateSummary =
+  async (
+    text
+  ) => {
+    return generateAIContent(`
 You are PaperPal AI.
 
-Answer the user's question using the document.
+Summarize the following document
+clearly and accurately.
 
-Do not invent information.
-If the answer is not present in the document, say so clearly.
+Rules:
+- use simple language
+- preserve important facts
+- preserve dates and amounts
+- do not invent information
+- organize the response clearly
 
 DOCUMENT:
 
-${text}
+${String(
+  text || ""
+).slice(0, 30000)}
+`);
+  };
+
+/* =========================================================
+   DOCUMENT QUESTION
+========================================================= */
+
+const askQuestion =
+  async (
+    text,
+    question
+  ) => {
+    return generateAIContent(`
+You are PaperPal AI.
+
+Answer the user's question using
+only the supplied document.
+
+If the answer is not contained
+in the document, say so clearly.
+
+DOCUMENT:
+
+${String(
+  text || ""
+).slice(0, 30000)}
 
 QUESTION:
 
 ${question}
 `);
-};
+  };
 
-
-/* =====================================================
+/* =========================================================
    LEARN TOPIC
-===================================================== */
+========================================================= */
 
-const learnTopic = async (
-  topic,
-  level = "Beginner",
-  language = "English"
-) => {
-  return generateAIContent(`
+const learnTopic =
+  async (
+    topic,
+    level = "Beginner",
+    language = "English"
+  ) => {
+    return generateAIContent(`
 You are PaperPal AI Learning Assistant.
 
-Topic:
+Teach the following topic to a
+${level} learner.
+
+Respond in ${language}.
+
+Include:
+1. What it is
+2. Key concepts
+3. Simple example
+4. How it works
+5. Why it matters
+6. Quick summary
+7. Exam/interview points
+
+TOPIC:
 ${topic}
-
-Learning level:
-${level}
-
-Response language:
-${language}
-
-Teach the topic clearly.
-
-Use these sections:
-
-WHAT IS IT?
-KEY CONCEPTS
-SIMPLE EXAMPLE
-HOW IT WORKS
-WHY IS IT IMPORTANT?
-QUICK SUMMARY
-EXAM / INTERVIEW POINTS
-
-Keep it simple and easy to understand.
 `);
-};
+  };
 
-
-/* =====================================================
+/* =========================================================
    TRANSLATE
-===================================================== */
+========================================================= */
 
-const translateText = async (
-  text,
-  language
-) => {
-  return generateAIContent(`
-Translate the following text into ${language}.
+const translateText =
+  async (
+    text,
+    language
+  ) => {
+    return generateAIContent(
+      `
+Translate the following text into
+${language}.
 
 Preserve:
-- Meaning
-- Names
-- Dates
-- Numbers
-- Amounts
-- Important technical terms
+- meaning
+- names
+- dates
+- numbers
+- amounts
+- technical terms
 
-Return only the translation.
+Return ONLY the translation.
 
 TEXT:
+${String(
+  text || ""
+).slice(0, 20000)}
+`,
+      QUIZ_MODEL,
+      {
+        maxOutputTokens: 1200,
+      }
+    );
+  };
 
-${text}
-`);
-};
+/* =========================================================
+   GENERIC PROMPT
+========================================================= */
 
-
-/* =====================================================
-   DIRECT PROMPT
-===================================================== */
-
-const generateFromPrompt = async (
-  prompt,
-  language = "English"
-) => {
-  return generateAIContent(`
+const generateFromPrompt =
+  async (
+    prompt,
+    language = "English"
+  ) => {
+    return generateAIContent(`
 You are PaperPal AI.
 
-Answer the following user request.
-
-Response language:
-${language}
+Respond in ${language}.
 
 USER REQUEST:
 
 ${prompt}
-
-Give a clear and useful answer.
 `);
-};
+  };
 
+/* =========================================================
+   QUIZ
+========================================================= */
 
-/* =====================================================
-   QUIZ GENERATOR
-===================================================== */
+const normalizeCorrectAnswer =
+  (
+    value,
+    options
+  ) => {
+    if (
+      typeof value ===
+      "number"
+    ) {
+      return value;
+    }
 
-const generateQuiz = async (
-  topic,
-  level = "Beginner",
-  language = "English",
-  count = 5
-) => {
-  let safeCount = Number(count);
+    const text =
+      String(
+        value ?? ""
+      ).trim();
 
-  if (!Number.isFinite(safeCount)) {
-    safeCount = 5;
-  }
+    if (
+      /^[0-3]$/.test(text)
+    ) {
+      return Number(text);
+    }
 
-  safeCount = Math.floor(safeCount);
+    if (
+      /^[A-D]$/i.test(text)
+    ) {
+      return (
+        text
+          .toUpperCase()
+          .charCodeAt(0) - 65
+      );
+    }
 
-  if (safeCount < 1) {
-    safeCount = 1;
-  }
+    const match =
+      options.findIndex(
+        (option) =>
+          option.toLowerCase() ===
+          text.toLowerCase()
+      );
 
-  if (safeCount > 50) {
-    safeCount = 50;
-  }
+    return match;
+  };
 
-  const raw =
-    await generateAIContent(`
-You are PaperPal AI Exam Preparation Assistant.
+const generateQuiz =
+  async (
+    topic,
+    level = "Beginner",
+    language = "English",
+    count = 5
+  ) => {
+    const safeCount =
+      Math.max(
+        1,
+        Math.min(
+          15,
+          Number(count) || 5
+        )
+      );
 
-Create exactly ${safeCount} multiple-choice questions.
+    const raw =
+      await generateAIContent(
+        `
+Create exactly ${safeCount}
+multiple-choice questions about:
 
-Topic:
+TOPIC:
 ${topic}
 
-Difficulty:
+LEVEL:
 ${level}
 
-Language:
+LANGUAGE:
 ${language}
 
-Each question must contain:
-- question
-- exactly 4 options
-- correctAnswer
-- explanation
+Return ONLY valid JSON.
 
-correctAnswer must be:
-0 for the first option
-1 for the second option
-2 for the third option
-3 for the fourth option
-
-Return ONLY JSON.
-
-Do not return markdown.
-Do not return code fences.
-Do not write any text before the JSON.
-Do not write any text after the JSON.
-
-Use exactly this structure:
+Format:
 
 {
   "questions": [
@@ -278,69 +907,51 @@ Use exactly this structure:
         "Option D"
       ],
       "correctAnswer": 0,
-      "explanation": "Explanation"
+      "explanation": "Short explanation"
     }
   ]
 }
-`);
 
-  try {
-    let cleaned = String(raw).trim();
+Rules:
+- exactly 4 options
+- correctAnswer MUST be 0, 1, 2 or 3
+- exactly one correct answer
+- explanation required
+- no markdown
+- no code fences
+- no text outside JSON
+`,
+        QUIZ_MODEL,
+        {
+          responseMimeType:
+            "application/json",
 
-    if (
-      cleaned.startsWith("```json")
-    ) {
-      cleaned =
-        cleaned.substring(7);
-    } else if (
-      cleaned.startsWith("```")
-    ) {
-      cleaned =
-        cleaned.substring(3);
-    }
+          maxOutputTokens:
+            Math.max(
+              1200,
+              safeCount * 260
+            ),
+        }
+      );
 
-    if (
-      cleaned.endsWith("```")
-    ) {
-      cleaned =
-        cleaned.substring(
-          0,
-          cleaned.length - 3
-        );
-    }
+    let parsed;
 
-    const firstBrace =
-      cleaned.indexOf("{");
-
-    const lastBrace =
-      cleaned.lastIndexOf("}");
-
-    if (
-      firstBrace === -1 ||
-      lastBrace === -1
-    ) {
+    try {
+      parsed =
+        parseAIJson(raw);
+    } catch {
       throw new Error(
-        "No valid JSON found."
+        "Gemini returned an invalid quiz response. Please try again."
       );
     }
 
-    cleaned =
-      cleaned.substring(
-        firstBrace,
-        lastBrace + 1
-      );
-
-    const parsed =
-      JSON.parse(cleaned);
-
     if (
-      !parsed ||
       !Array.isArray(
-        parsed.questions
+        parsed?.questions
       )
     ) {
       throw new Error(
-        "Invalid quiz structure."
+        "Gemini returned an invalid quiz structure."
       );
     }
 
@@ -348,35 +959,51 @@ Use exactly this structure:
       parsed.questions
         .slice(0, safeCount)
         .map(
-          (item, index) => {
+          (
+            item,
+            index
+          ) => {
+            const options =
+              Array.isArray(
+                item?.options
+              )
+                ? item.options.map(
+                    (option) =>
+                      String(
+                        option ??
+                          ""
+                      ).trim()
+                  )
+                : [];
+
             if (
-              !item.question ||
-              !Array.isArray(
-                item.options
-              ) ||
-              item.options.length !== 4
+              !item?.question ||
+              options.length !== 4
             ) {
               throw new Error(
-                `Invalid question ${
+                `Invalid quiz question ${
                   index + 1
                 }.`
               );
             }
 
             const correctAnswer =
-              Number(
-                item.correctAnswer
+              normalizeCorrectAnswer(
+                item.correctAnswer,
+                options
               );
 
             if (
               !Number.isInteger(
                 correctAnswer
               ) ||
-              correctAnswer < 0 ||
-              correctAnswer > 3
+              correctAnswer <
+                0 ||
+              correctAnswer >
+                3
             ) {
               throw new Error(
-                `Invalid answer for question ${
+                `Invalid answer key for quiz question ${
                   index + 1
                 }.`
               );
@@ -388,51 +1015,33 @@ Use exactly this structure:
                   item.question
                 ).trim(),
 
-              options:
-                item.options.map(
-                  (option) =>
-                    String(
-                      option
-                    ).trim()
-                ),
+              options,
 
               correctAnswer,
 
               explanation:
-                item.explanation
-                  ? String(
-                      item.explanation
-                    ).trim()
-                  : "",
+                String(
+                  item.explanation ||
+                    ""
+                ).trim(),
             };
           }
         );
 
     if (!questions.length) {
       throw new Error(
-        "No quiz questions generated."
+        "No quiz questions were generated."
       );
     }
 
     return {
       questions,
     };
-  } catch (error) {
-    console.error(
-      "Quiz Parsing Error:",
-      error.message
-    );
+  };
 
-    throw new Error(
-      "AI generated an invalid quiz format. Please try again."
-    );
-  }
-};
-
-
-/* =====================================================
+/* =========================================================
    CAREER ANALYSIS
-===================================================== */
+========================================================= */
 
 const generateCareerAnalysis =
   async (
@@ -441,10 +1050,12 @@ const generateCareerAnalysis =
     resumeText
   ) => {
     const raw =
-      await generateAIContent(`
+      await generateAIContent(
+        `
 You are PaperPal AI Career Assistant.
 
-Analyze the candidate's resume and career goal.
+Analyze the candidate for the
+requested career.
 
 CAREER GOAL:
 ${careerGoal}
@@ -453,224 +1064,139 @@ TARGET ROLE:
 ${targetRole}
 
 RESUME:
-
-${resumeText}
+${String(
+  resumeText || ""
+).slice(0, 30000)}
 
 Return ONLY valid JSON.
-
-Do not use markdown.
-Do not use code fences.
-
-Structure:
 
 {
   "currentSkills": [],
   "skillsToImprove": [],
   "recommendedSkills": [],
-  "careerReadiness": 65,
+  "careerReadiness": 0,
   "roadmap": [
     {
       "step": 1,
-      "title": "Build the Foundation",
-      "description": "What to do",
+      "title": "",
+      "description": "",
       "status": "Current"
     },
     {
       "step": 2,
-      "title": "Develop Job-Ready Skills",
-      "description": "What to learn",
+      "title": "",
+      "description": "",
       "status": "Next"
     },
     {
       "step": 3,
-      "title": "Build Projects",
-      "description": "Projects to build",
+      "title": "",
+      "description": "",
       "status": "Upcoming"
     },
     {
       "step": 4,
-      "title": "Prepare for Interviews",
-      "description": "Preparation steps",
+      "title": "",
+      "description": "",
       "status": "Upcoming"
     }
   ],
-  "analysis": "Short candidate analysis"
+  "analysis": ""
 }
 
 Rules:
-- Use the actual resume.
-- Don't invent skills.
-- Make recommendations relevant to the target role.
-- careerReadiness must be 0-100.
-- Return exactly 4 roadmap steps.
-`);
+- do not invent skills
+- use the actual resume
+- make recommendations relevant to the target role
+- readiness must be 0-100
+- exactly 4 roadmap steps
+`,
+        MODEL,
+        {
+          responseMimeType:
+            "application/json",
+          maxOutputTokens: 1800,
+        }
+      );
 
-    try {
-      let cleaned =
-        String(raw).trim();
+    const parsed =
+      parseAIJson(raw);
 
-      if (
-        cleaned.startsWith(
-          "```json"
-        )
-      ) {
-        cleaned =
-          cleaned.substring(7);
-      } else if (
-        cleaned.startsWith("```")
-      ) {
-        cleaned =
-          cleaned.substring(3);
-      }
+    return {
+      currentSkills:
+        toStringArray(
+          parsed.currentSkills,
+          12
+        ),
 
-      if (
-        cleaned.endsWith("```")
-      ) {
-        cleaned =
-          cleaned.substring(
-            0,
-            cleaned.length - 3
-          );
-      }
+      skillsToImprove:
+        toStringArray(
+          parsed.skillsToImprove,
+          12
+        ),
 
-      const firstBrace =
-        cleaned.indexOf("{");
+      recommendedSkills:
+        toStringArray(
+          parsed.recommendedSkills,
+          12
+        ),
 
-      const lastBrace =
-        cleaned.lastIndexOf("}");
-
-      if (
-        firstBrace === -1 ||
-        lastBrace === -1
-      ) {
-        throw new Error(
-          "No career JSON found."
-        );
-      }
-
-      cleaned =
-        cleaned.substring(
-          firstBrace,
-          lastBrace + 1
-        );
-
-      const parsed =
-        JSON.parse(cleaned);
-
-      let readiness =
-        Number(
-          parsed.careerReadiness
-        );
-
-      if (
-        !Number.isFinite(
-          readiness
-        )
-      ) {
-        readiness = 0;
-      }
-
-      readiness = Math.round(
-        Math.min(
-          Math.max(
-            readiness,
-            0
-          ),
+      careerReadiness:
+        clamp(
+          parsed.careerReadiness,
+          0,
           100
+        ),
+
+      roadmap:
+        Array.isArray(
+          parsed.roadmap
         )
-      );
+          ? parsed.roadmap
+              .slice(0, 4)
+              .map(
+                (
+                  item,
+                  index
+                ) => ({
+                  step:
+                    Number(
+                      item?.step
+                    ) ||
+                    index + 1,
 
-      return {
-        currentSkills:
-          Array.isArray(
-            parsed.currentSkills
-          )
-            ? parsed.currentSkills
-                .slice(0, 12)
-                .map(String)
-            : [],
+                  title:
+                    String(
+                      item?.title ||
+                        ""
+                    ).trim(),
 
-        skillsToImprove:
-          Array.isArray(
-            parsed.skillsToImprove
-          )
-            ? parsed.skillsToImprove
-                .slice(0, 12)
-                .map(String)
-            : [],
+                  description:
+                    String(
+                      item?.description ||
+                        ""
+                    ).trim(),
 
-        recommendedSkills:
-          Array.isArray(
-            parsed.recommendedSkills
-          )
-            ? parsed.recommendedSkills
-                .slice(0, 12)
-                .map(String)
-            : [],
+                  status:
+                    String(
+                      item?.status ||
+                        "Upcoming"
+                    ).trim(),
+                })
+              )
+          : [],
 
-        careerReadiness:
-          readiness,
-
-        roadmap:
-          Array.isArray(
-            parsed.roadmap
-          )
-            ? parsed.roadmap
-                .slice(0, 4)
-                .map(
-                  (
-                    item,
-                    index
-                  ) => ({
-                    step:
-                      Number(
-                        item.step
-                      ) ||
-                      index + 1,
-
-                    title:
-                      String(
-                        item.title ||
-                          ""
-                      ),
-
-                    description:
-                      String(
-                        item.description ||
-                          ""
-                      ),
-
-                    status:
-                      String(
-                        item.status ||
-                          "Upcoming"
-                      ),
-                  })
-                )
-            : [],
-
-        analysis:
-          String(
-            parsed.analysis ||
-              ""
-          ).trim(),
-      };
-    } catch (error) {
-      console.error(
-        "Career JSON Error:",
-        error.message
-      );
-
-      throw new Error(
-        "AI generated an invalid career analysis."
-      );
-    }
+      analysis:
+        String(
+          parsed.analysis ||
+            ""
+        ).trim(),
+    };
   };
 
-
-/* =====================================================
-   INTERVIEW QUESTION GENERATOR
-===================================================== */
+/* =========================================================
+   INTERVIEW QUESTIONS
+========================================================= */
 
 const generateInterviewQuestions =
   async (
@@ -678,181 +1204,70 @@ const generateInterviewQuestions =
     targetRole,
     skills = []
   ) => {
-    const interviewType =
-      type === "technical"
-        ? "Technical Interview"
-        : type === "hr"
-        ? "HR Interview"
-        : "Mock Interview";
-
-    const skillText =
-      Array.isArray(skills) &&
-      skills.length
-        ? skills.join(", ")
-        : "No specific skills supplied";
-
     const raw =
       await generateAIContent(`
 You are PaperPal AI Interview Coach.
 
 Generate exactly 5 interview questions.
 
-Interview type:
-${interviewType}
+INTERVIEW TYPE:
+${type}
 
-Target role:
+TARGET ROLE:
 ${targetRole}
 
-Candidate skills:
-${skillText}
-
-Requirements:
-
-For TECHNICAL:
-- Ask role-specific technical questions.
-- Mix fundamentals and practical situations.
-- Focus on candidate skills where relevant.
-
-For HR:
-- Ask realistic HR and behavioral questions.
-- Include communication, teamwork, strengths, weaknesses and situations.
-
-For MOCK:
-- Mix technical, behavioral and role-specific questions.
-
-Make the difficulty gradually increase.
-
-Return ONLY valid JSON.
-
-Do not use markdown.
-Do not use code fences.
-Do not include any extra text.
-
-Use:
-
-{
-  "questions": [
-    {
-      "question": "Question",
-      "expectedAnswer": "What a strong answer should generally contain"
-    }
-  ]
+CANDIDATE SKILLS:
+${
+  Array.isArray(skills)
+    ? skills.join(
+        ", "
+      )
+    : ""
 }
+
+Return ONLY valid JSON:
+
+[
+  {
+    "question": "",
+    "expectedAnswer": ""
+  }
+]
 `);
 
-    try {
-      let cleaned =
-        String(raw).trim();
+    const parsed =
+      parseAIJson(raw);
 
-      if (
-        cleaned.startsWith(
-          "```json"
-        )
-      ) {
-        cleaned =
-          cleaned.substring(7);
-      } else if (
-        cleaned.startsWith("```")
-      ) {
-        cleaned =
-          cleaned.substring(3);
-      }
-
-      if (
-        cleaned.endsWith("```")
-      ) {
-        cleaned =
-          cleaned.substring(
-            0,
-            cleaned.length - 3
-          );
-      }
-
-      const firstBrace =
-        cleaned.indexOf("{");
-
-      const lastBrace =
-        cleaned.lastIndexOf("}");
-
-      if (
-        firstBrace === -1 ||
-        lastBrace === -1
-      ) {
-        throw new Error(
-          "No interview JSON found."
-        );
-      }
-
-      cleaned =
-        cleaned.substring(
-          firstBrace,
-          lastBrace + 1
-        );
-
-      const parsed =
-        JSON.parse(cleaned);
-
-      if (
-        !parsed ||
-        !Array.isArray(
-          parsed.questions
-        )
-      ) {
-        throw new Error(
-          "Invalid interview structure."
-        );
-      }
-
-      const questions =
-        parsed.questions
-          .slice(0, 5)
-          .map(
-            (item) => ({
-              question:
-                String(
-                  item.question ||
-                    ""
-                ).trim(),
-
-              expectedAnswer:
-                String(
-                  item.expectedAnswer ||
-                    ""
-                ).trim(),
-            })
-          )
-          .filter(
-            (item) =>
-              item.question
-          );
-
-      if (
-        questions.length !== 5
-      ) {
-        throw new Error(
-          "AI did not generate exactly 5 interview questions."
-        );
-      }
-
-      return {
-        questions,
-      };
-    } catch (error) {
-      console.error(
-        "Interview Question Parsing Error:",
-        error.message
-      );
-
+    if (
+      !Array.isArray(parsed)
+    ) {
       throw new Error(
-        "AI generated an invalid interview question set."
+        "AI returned invalid interview questions."
       );
     }
+
+    return parsed
+      .slice(0, 5)
+      .map(
+        (item) => ({
+          question:
+            String(
+              item?.question ||
+                ""
+            ).trim(),
+
+          expectedAnswer:
+            String(
+              item?.expectedAnswer ||
+                ""
+            ).trim(),
+        })
+      );
   };
 
-
-/* =====================================================
-   EVALUATE INTERVIEW ANSWER
-===================================================== */
+/* =========================================================
+   INTERVIEW ANSWER EVALUATION
+========================================================= */
 
 const evaluateInterviewAnswer =
   async (
@@ -864,14 +1279,12 @@ const evaluateInterviewAnswer =
   ) => {
     const raw =
       await generateAIContent(`
-You are PaperPal AI Interview Evaluator.
+You are an expert interview evaluator.
 
-Evaluate this interview answer fairly.
-
-Interview type:
+INTERVIEW TYPE:
 ${type}
 
-Target role:
+TARGET ROLE:
 ${targetRole}
 
 QUESTION:
@@ -883,699 +1296,146 @@ ${expectedAnswer}
 USER ANSWER:
 ${userAnswer}
 
-Evaluate based on:
-
+Evaluate:
 - correctness
 - relevance
 - clarity
 - completeness
 - communication
-- confidence
-- technical understanding when applicable
+- technical understanding
 
-Give a score from 0 to 10.
-
-Do not punish the candidate for small grammar mistakes.
-
-Return ONLY valid JSON.
-
-Structure:
+Return ONLY valid JSON:
 
 {
-  "score": 8,
-  "feedback": "Specific constructive feedback",
-  "betterAnswer": "A stronger example answer"
+  "score": 0,
+  "feedback": "",
+  "betterAnswer": ""
 }
-
-Rules:
-- Be fair.
-- Do not be unnecessarily harsh.
-- Give practical feedback.
-- Do not invent requirements unrelated to the role.
 `);
 
-    try {
-      let cleaned =
-        String(raw).trim();
+    const parsed =
+      parseAIJson(raw);
 
-      if (
-        cleaned.startsWith(
-          "```json"
-        )
-      ) {
-        cleaned =
-          cleaned.substring(7);
-      } else if (
-        cleaned.startsWith("```")
-      ) {
-        cleaned =
-          cleaned.substring(3);
-      }
-
-      if (
-        cleaned.endsWith("```")
-      ) {
-        cleaned =
-          cleaned.substring(
-            0,
-            cleaned.length - 3
-          );
-      }
-
-      const firstBrace =
-        cleaned.indexOf("{");
-
-      const lastBrace =
-        cleaned.lastIndexOf("}");
-
-      if (
-        firstBrace === -1 ||
-        lastBrace === -1
-      ) {
-        throw new Error(
-          "No evaluation JSON found."
-        );
-      }
-
-      cleaned =
-        cleaned.substring(
-          firstBrace,
-          lastBrace + 1
-        );
-
-      const parsed =
-        JSON.parse(cleaned);
-
-      let score =
-        Number(
-          parsed.score
-        );
-
-      if (
-        !Number.isFinite(score)
-      ) {
-        score = 0;
-      }
-
-      score = Math.round(
-        Math.min(
-          Math.max(
-            score,
-            0
-          ),
+    return {
+      score:
+        clamp(
+          parsed.score,
+          0,
           10
-        )
-      );
+        ),
 
-      return {
-        score,
+      feedback:
+        String(
+          parsed.feedback ||
+            ""
+        ).trim(),
 
-        feedback:
-          String(
-            parsed.feedback ||
-              ""
-          ).trim(),
-
-        betterAnswer:
-          String(
-            parsed.betterAnswer ||
-              ""
-          ).trim(),
-      };
-    } catch (error) {
-      console.error(
-        "Interview Evaluation Parsing Error:",
-        error.message
-      );
-
-      throw new Error(
-        "AI generated an invalid answer evaluation."
-      );
-    }
+      betterAnswer:
+        String(
+          parsed.betterAnswer ||
+            ""
+        ).trim(),
+    };
   };
 
-
-/* =====================================================
-   FINAL INTERVIEW ANALYSIS
-===================================================== */
+/* =========================================================
+   COMPLETED INTERVIEW
+========================================================= */
 
 const analyzeCompletedInterview =
   async (
-    type,
-    targetRole,
-    questions
+    data
   ) => {
-    const transcript =
-      questions
-        .map(
-          (
-            q,
-            index
-          ) => `
-Question ${index + 1}:
-${q.question}
+    const role =
+      data?.role ||
+      data?.targetRole ||
+      "";
 
-Candidate Answer:
-${
-  q.userAnswer ||
-  "No answer provided"
-}
+    const answers =
+      data?.answers ||
+      data?.interview ||
+      [];
 
-Question Score:
-${q.score ?? 0}/10
+    return generateAIContent(`
+You are PaperPal AI Interview Coach.
 
-Question Feedback:
-${q.feedback || ""}
+Analyze the completed interview.
 
-Better Answer:
-${q.betterAnswer || ""}
-`
-        )
-        .join(
-          "\n----------------------\n"
-        );
+TARGET ROLE:
+${role}
 
-    const raw =
-      await generateAIContent(`
-You are a senior interview coach.
-
-Analyze this completed interview.
-
-Interview type:
-${type}
-
-Target role:
-${targetRole}
-
-Transcript:
-${transcript}
-
-Provide an honest but encouraging assessment.
-
-Focus on:
-- overall answer quality
-- communication
-- technical knowledge when applicable
-- confidence
-- relevance
-- completeness
-- readiness for the target role
-
-Return ONLY valid JSON.
-
-Use exactly:
-
-{
-  "overallFeedback": "Overall assessment of the candidate",
-  "percentage": 0,
-  "interviewTips": [
-    "Tip 1",
-    "Tip 2",
-    "Tip 3",
-    "Tip 4",
-    "Tip 5"
-  ],
-  "strengths": [
-    "Strength 1",
-    "Strength 2",
-    "Strength 3"
-  ],
-  "areasOfImprovement": [
-    "Area 1",
-    "Area 2",
-    "Area 3",
-    "Area 4"
-  ],
-  "recommendation": "Final recommendation for the candidate"
-}
-
-Rules:
-- percentage must be between 0 and 100.
-- Keep tips practical.
-- Do not invent qualifications.
-- Mention specific areas the candidate should practice.
-`);
-
-    try {
-      let cleaned =
-        String(raw).trim();
-
-      if (
-        cleaned.startsWith(
-          "```json"
-        )
-      ) {
-        cleaned =
-          cleaned.substring(7);
-      } else if (
-        cleaned.startsWith("```")
-      ) {
-        cleaned =
-          cleaned.substring(3);
-      }
-
-      if (
-        cleaned.endsWith("```")
-      ) {
-        cleaned =
-          cleaned.substring(
-            0,
-            cleaned.length - 3
-          );
-      }
-
-      const firstBrace =
-        cleaned.indexOf("{");
-
-      const lastBrace =
-        cleaned.lastIndexOf("}");
-
-      if (
-        firstBrace === -1 ||
-        lastBrace === -1
-      ) {
-        throw new Error(
-          "No final analysis JSON found."
-        );
-      }
-
-      cleaned =
-        cleaned.substring(
-          firstBrace,
-          lastBrace + 1
-        );
-
-      const parsed =
-        JSON.parse(cleaned);
-
-      let percentage =
-        Number(
-          parsed.percentage
-        );
-
-      if (
-        !Number.isFinite(
-          percentage
-        )
-      ) {
-        percentage = 0;
-      }
-
-      percentage = Math.round(
-        Math.min(
-          Math.max(
-            percentage,
-            0
-          ),
-          100
-        )
-      );
-
-      return {
-        overallFeedback:
-          String(
-            parsed.overallFeedback ||
-              ""
-          ).trim(),
-
-        percentage,
-
-        interviewTips:
-          Array.isArray(
-            parsed.interviewTips
-          )
-            ? parsed.interviewTips
-                .slice(0, 5)
-                .map(String)
-            : [],
-
-        strengths:
-          Array.isArray(
-            parsed.strengths
-          )
-            ? parsed.strengths
-                .slice(0, 5)
-                .map(String)
-            : [],
-
-        areasOfImprovement:
-          Array.isArray(
-            parsed.areasOfImprovement
-          )
-            ? parsed.areasOfImprovement
-                .slice(0, 6)
-                .map(String)
-            : [],
-
-        recommendation:
-          String(
-            parsed.recommendation ||
-              ""
-          ).trim(),
-      };
-    } catch (error) {
-      console.error(
-        "Final Interview Analysis JSON Error:",
-        error.message
-      );
-
-      throw new Error(
-        "AI could not analyze the completed interview."
-      );
-    }
-  };
-
-
-/* =====================================================
-   RESUME BUILDER
-===================================================== */
-
-const generateResume = async (
-  profile,
-  jobDescription
-) => {
-  const raw =
-    await generateAIContent(`
-You are PaperPal AI Resume Specialist.
-
-Create a professional ATS-friendly resume using ONLY the candidate information supplied below.
-
-CANDIDATE PROFILE:
+ANSWERS:
 ${JSON.stringify(
-  profile,
+  answers,
   null,
   2
 )}
 
-TARGET JOB DESCRIPTION:
-${jobDescription}
-
-Requirements:
-
-- Tailor the resume to the target job.
-- Identify relevant keywords from the job description.
-- Prioritize skills and projects actually present in the candidate profile.
-- Improve wording and bullet points.
-- Do NOT invent employers, degrees, dates, skills, certifications, achievements or experience.
-- Do NOT claim a skill unless the candidate supplied it.
-- If the candidate is a fresher, emphasize education, projects, skills and certifications.
-- Keep the resume concise and ATS-friendly.
-- Create a professional summary relevant to the target role.
-- Preserve the candidate's factual information.
-- Return ONLY valid JSON.
-
-Use exactly this structure:
-
-{
-  "title": "Target Role Resume",
-  "atsScore": 85,
-  "matchedKeywords": [],
-  "missingKeywords": [],
-  "personalDetails": {
-    "fullName": "",
-    "email": "",
-    "phone": "",
-    "location": "",
-    "linkedin": "",
-    "github": "",
-    "portfolio": ""
-  },
-  "summary": "",
-  "skills": [],
-  "education": [],
-  "experience": [
-    {
-      "role": "",
-      "company": "",
-      "duration": "",
-      "bullets": []
-    }
-  ],
-  "projects": [
-    {
-      "name": "",
-      "technologies": "",
-      "bullets": []
-    }
-  ],
-  "certifications": [],
-  "achievements": []
-}
-
-atsScore must be between 0 and 100.
+Provide:
+- overall performance
+- technical strengths
+- technical gaps
+- communication strengths
+- communication weaknesses
+- strongest answer
+- weakest answer
+- study recommendations
+- practical improvement plan
 `);
+  };
 
-  return parseResumeJson(
-    raw
-  );
-};
-
-
-/* =====================================================
-   RESUME ENHANCER
-===================================================== */
-
-const enhanceResume = async (
-  existingResumeText,
-  jobDescription,
-  targetRole = ""
-) => {
-  const raw =
-    await generateAIContent(`
-You are PaperPal AI Resume Enhancement Specialist.
-
-Improve the existing resume for the target job.
-
-TARGET ROLE:
-${targetRole}
-
-EXISTING RESUME:
-${existingResumeText}
-
-JOB DESCRIPTION:
-${jobDescription}
-
-Rules:
-
-- Preserve all factual information from the existing resume.
-- Do NOT invent employers.
-- Do NOT invent dates.
-- Do NOT invent education.
-- Do NOT invent certifications.
-- Do NOT invent skills.
-- Do NOT invent achievements.
-- Improve grammar and wording.
-- Rewrite weak bullet points into stronger professional bullets only when supported by the source.
-- Tailor the professional summary to the target role.
-- Match genuine resume skills to relevant job keywords.
-- Put missing job keywords in missingKeywords instead of falsely claiming them.
-- Keep the resume ATS-friendly and concise.
-- Preserve useful projects and experience.
-- Return ONLY valid JSON.
-
-Use exactly:
-
-{
-  "title": "Enhanced Resume",
-  "atsScore": 85,
-  "matchedKeywords": [],
-  "missingKeywords": [],
-  "personalDetails": {
-    "fullName": "",
-    "email": "",
-    "phone": "",
-    "location": "",
-    "linkedin": "",
-    "github": "",
-    "portfolio": ""
-  },
-  "summary": "",
-  "skills": [],
-  "education": [],
-  "experience": [
-    {
-      "role": "",
-      "company": "",
-      "duration": "",
-      "bullets": []
-    }
-  ],
-  "projects": [
-    {
-      "name": "",
-      "technologies": "",
-      "bullets": []
-    }
-  ],
-  "certifications": [],
-  "achievements": []
-}
-`);
-
-  return parseResumeJson(
-    raw
-  );
-};
-
-
-/* =====================================================
+/* =========================================================
    RESUME JSON PARSER
-===================================================== */
+========================================================= */
 
-const parseResumeJson = (
-  raw
-) => {
-  try {
-    let cleaned =
-      String(raw).trim();
-
-    if (
-      cleaned.startsWith(
-        "```json"
-      )
-    ) {
-      cleaned =
-        cleaned.substring(7);
-    } else if (
-      cleaned.startsWith(
-        "```"
-      )
-    ) {
-      cleaned =
-        cleaned.substring(3);
-    }
-
-    if (
-      cleaned.endsWith("```")
-    ) {
-      cleaned =
-        cleaned.substring(
-          0,
-          cleaned.length - 3
-        );
-    }
-
-    const firstBrace =
-      cleaned.indexOf("{");
-
-    const lastBrace =
-      cleaned.lastIndexOf("}");
-
-    if (
-      firstBrace === -1 ||
-      lastBrace === -1
-    ) {
-      throw new Error(
-        "No resume JSON found."
-      );
-    }
-
-    cleaned =
-      cleaned.substring(
-        firstBrace,
-        lastBrace + 1
-      );
-
-    const parsed =
-      JSON.parse(cleaned);
-
-    let atsScore =
-      Number(
-        parsed.atsScore
-      );
-
-    if (
-      !Number.isFinite(
-        atsScore
-      )
-    ) {
-      atsScore = 0;
-    }
-
-    atsScore = Math.round(
-      Math.min(
-        Math.max(
-          atsScore,
-          0
-        ),
-        100
-      )
-    );
+const normalizeResume =
+  (parsed) => {
+    const personal =
+      parsed?.personalDetails ||
+      {};
 
     return {
-      title:
-        String(
-          parsed.title ||
-            "PaperPal Resume"
-        ).trim(),
-
-      atsScore,
-
-      matchedKeywords:
-        Array.isArray(
-          parsed.matchedKeywords
-        )
-          ? parsed.matchedKeywords
-              .slice(0, 20)
-              .map(String)
-          : [],
-
-      missingKeywords:
-        Array.isArray(
-          parsed.missingKeywords
-        )
-          ? parsed.missingKeywords
-              .slice(0, 20)
-              .map(String)
-          : [],
-
       personalDetails: {
         fullName:
           String(
-            parsed.personalDetails
-              ?.fullName ||
+            personal.fullName ||
+              personal.name ||
               ""
           ).trim(),
 
         email:
           String(
-            parsed.personalDetails
-              ?.email ||
+            personal.email ||
               ""
           ).trim(),
 
         phone:
           String(
-            parsed.personalDetails
-              ?.phone ||
+            personal.phone ||
               ""
           ).trim(),
 
         location:
           String(
-            parsed.personalDetails
-              ?.location ||
+            personal.location ||
               ""
           ).trim(),
 
         linkedin:
           String(
-            parsed.personalDetails
-              ?.linkedin ||
+            personal.linkedin ||
               ""
           ).trim(),
 
         github:
           String(
-            parsed.personalDetails
-              ?.github ||
+            personal.github ||
               ""
           ).trim(),
 
         portfolio:
           String(
-            parsed.personalDetails
-              ?.portfolio ||
+            personal.portfolio ||
               ""
           ).trim(),
       },
@@ -1587,169 +1447,392 @@ const parseResumeJson = (
         ).trim(),
 
       skills:
-        Array.isArray(
-          parsed.skills
-        )
-          ? parsed.skills
-              .slice(0, 25)
-              .map(String)
-              .map((item) =>
-                item.trim()
-              )
-          : [],
+        toStringArray(
+          parsed.skills,
+          30
+        ),
 
       education:
         Array.isArray(
           parsed.education
         )
-          ? parsed.education
-              .slice(0, 10)
-              .map((item) => {
-                if (
-                  typeof item ===
-                  "string"
-                ) {
-                  return item;
-                }
-
-                return {
-                  degree:
-                    String(
-                      item.degree ||
-                        ""
-                    ).trim(),
-
-                  institution:
-                    String(
-                      item.institution ||
-                        item.college ||
-                        ""
-                    ).trim(),
-
-                  duration:
-                    String(
-                      item.duration ||
-                        ""
-                    ).trim(),
-
-                  score:
-                    String(
-                      item.score ||
-                        item.cgpa ||
-                        ""
-                    ).trim(),
-                };
-              })
+          ? parsed.education.slice(
+              0,
+              10
+            )
           : [],
 
       experience:
         Array.isArray(
           parsed.experience
         )
-          ? parsed.experience
-              .slice(0, 10)
-              .map(
-                (item) => ({
-                  role:
-                    String(
-                      item.role ||
-                        ""
-                    ).trim(),
-
-                  company:
-                    String(
-                      item.company ||
-                        ""
-                    ).trim(),
-
-                  duration:
-                    String(
-                      item.duration ||
-                        ""
-                    ).trim(),
-
-                  bullets:
-                    Array.isArray(
-                      item.bullets
-                    )
-                      ? item.bullets
-                          .slice(0, 8)
-                          .map(
-                            String
-                          )
-                      : [],
-                })
-              )
+          ? parsed.experience.slice(
+              0,
+              10
+            )
           : [],
 
       projects:
         Array.isArray(
           parsed.projects
         )
-          ? parsed.projects
-              .slice(0, 10)
-              .map(
-                (item) => ({
-                  name:
-                    String(
-                      item.name ||
-                        ""
-                    ).trim(),
-
-                  technologies:
-                    String(
-                      item.technologies ||
-                        ""
-                    ).trim(),
-
-                  bullets:
-                    Array.isArray(
-                      item.bullets
-                    )
-                      ? item.bullets
-                          .slice(0, 8)
-                          .map(
-                            String
-                          )
-                      : [],
-                })
-              )
+          ? parsed.projects.slice(
+              0,
+              10
+            )
           : [],
 
       certifications:
-        Array.isArray(
-          parsed.certifications
-        )
-          ? parsed.certifications
-              .slice(0, 15)
-              .map(String)
-          : [],
+        toStringArray(
+          parsed.certifications,
+          20
+        ),
 
       achievements:
-        Array.isArray(
-          parsed.achievements
-        )
-          ? parsed.achievements
-              .slice(0, 15)
-              .map(String)
-          : [],
+        toStringArray(
+          parsed.achievements,
+          20
+        ),
+
+      atsScore:
+        clamp(
+          parsed.atsScore,
+          0,
+          100
+        ),
+
+      matchedKeywords:
+        toStringArray(
+          parsed.matchedKeywords,
+          30
+        ),
+
+      missingKeywords:
+        toStringArray(
+          parsed.missingKeywords,
+          30
+        ),
     };
-  } catch (error) {
-    console.error(
-      "Resume JSON Parsing Error:",
-      error.message
+  };
+
+/* =========================================================
+   BUILD RESUME
+========================================================= */
+
+const generateResume =
+  async (
+    profile = {},
+    jobDescription = ""
+  ) => {
+    const raw =
+      await generateAIContent(
+        `
+You are PaperPal AI Resume Builder.
+
+Create a professional ATS-friendly
+resume using ONLY the candidate
+information supplied.
+
+TARGET ROLE:
+${profile?.targetRole || ""}
+
+JOB DESCRIPTION:
+${String(
+  jobDescription || ""
+).slice(0, 30000)}
+
+CANDIDATE INFORMATION:
+${JSON.stringify(
+  profile,
+  null,
+  2
+)}
+
+Return ONLY valid JSON:
+
+{
+  "personalDetails": {
+    "fullName": "",
+    "email": "",
+    "phone": "",
+    "location": "",
+    "linkedin": "",
+    "github": "",
+    "portfolio": ""
+  },
+  "summary": "",
+  "skills": [],
+  "education": [],
+  "experience": [],
+  "projects": [],
+  "certifications": [],
+  "achievements": [],
+  "atsScore": 0,
+  "matchedKeywords": [],
+  "missingKeywords": []
+}
+
+Do not invent qualifications,
+experience, projects, education or
+certifications.
+`,
+        MODEL,
+        {
+          responseMimeType:
+            "application/json",
+          maxOutputTokens: 2600,
+        }
+      );
+
+    return normalizeResume(
+      parseAIJson(raw)
     );
+  };
 
-    throw new Error(
-      "AI generated an invalid resume format."
+/* =========================================================
+   ENHANCE RESUME
+========================================================= */
+
+const enhanceResume =
+  async (
+    resumeText,
+    jobDescription = "",
+    targetRole = ""
+  ) => {
+    const raw =
+      await generateAIContent(
+        `
+You are PaperPal AI Resume Enhancer.
+
+Improve the existing resume for the
+target role.
+
+TARGET ROLE:
+${targetRole}
+
+JOB DESCRIPTION:
+${String(
+  jobDescription || ""
+).slice(0, 30000)}
+
+EXISTING RESUME:
+${String(
+  resumeText || ""
+).slice(0, 30000)}
+
+Return ONLY valid JSON:
+
+{
+  "personalDetails": {
+    "fullName": "",
+    "email": "",
+    "phone": "",
+    "location": "",
+    "linkedin": "",
+    "github": "",
+    "portfolio": ""
+  },
+  "summary": "",
+  "skills": [],
+  "education": [],
+  "experience": [],
+  "projects": [],
+  "certifications": [],
+  "achievements": [],
+  "atsScore": 0,
+  "matchedKeywords": [],
+  "missingKeywords": []
+}
+
+Rules:
+- preserve factual information
+- do not invent experience
+- improve ATS wording
+- improve clarity
+- prioritize relevant skills
+`,
+        MODEL,
+        {
+          responseMimeType:
+            "application/json",
+          maxOutputTokens: 2600,
+        }
+      );
+
+    return normalizeResume(
+      parseAIJson(raw)
     );
-  }
-};
+  };
 
+/* =========================================================
+   ATS ANALYSIS
+========================================================= */
 
-/* =====================================================
+const analyzeResumeJobMatch =
+  async (
+    resumeText,
+    jobDescription,
+    targetRole = ""
+  ) => {
+    const raw =
+      await generateAIContent(
+        `
+You are PaperPal ATS Resume Analyst.
+
+TARGET ROLE:
+${targetRole}
+
+RESUME:
+${String(
+  resumeText || ""
+).slice(0, 30000)}
+
+JOB DESCRIPTION:
+${String(
+  jobDescription || ""
+).slice(0, 30000)}
+
+Return ONLY valid JSON:
+
+{
+  "atsScore": 0,
+  "jobMatchPercentage": 0,
+  "experienceFitPercentage": 0,
+  "matchedSkills": [],
+  "missingSkills": [],
+  "matchedKeywords": [],
+  "missingKeywords": [],
+  "improvementSuggestions": []
+}
+
+Rules:
+- scores must be 0-100
+- use only supplied information
+- do not invent candidate experience
+- suggestions must be practical
+`,
+        MODEL,
+        {
+          responseMimeType:
+            "application/json",
+          maxOutputTokens: 1800,
+        }
+      );
+
+    const parsed =
+      parseAIJson(raw);
+
+    return {
+      atsScore:
+        clamp(
+          parsed.atsScore,
+          0,
+          100
+        ),
+
+      jobMatchPercentage:
+        clamp(
+          parsed.jobMatchPercentage,
+          0,
+          100
+        ),
+
+      experienceFitPercentage:
+        clamp(
+          parsed.experienceFitPercentage,
+          0,
+          100
+        ),
+
+      matchedSkills:
+        toStringArray(
+          parsed.matchedSkills,
+          30
+        ),
+
+      missingSkills:
+        toStringArray(
+          parsed.missingSkills,
+          30
+        ),
+
+      matchedKeywords:
+        toStringArray(
+          parsed.matchedKeywords,
+          30
+        ),
+
+      missingKeywords:
+        toStringArray(
+          parsed.missingKeywords,
+          30
+        ),
+
+      improvementSuggestions:
+        toStringArray(
+          parsed.improvementSuggestions,
+          20
+        ),
+    };
+  };
+
+/* =========================================================
+   PARSE RESUME JSON
+========================================================= */
+
+const parseResumeJson =
+  async (
+    resumeText
+  ) => {
+    const raw =
+      await generateAIContent(
+        `
+Extract structured resume information.
+
+RESUME:
+${String(
+  resumeText || ""
+).slice(0, 30000)}
+
+Return ONLY valid JSON:
+
+{
+  "personalDetails": {
+    "fullName": "",
+    "email": "",
+    "phone": "",
+    "location": "",
+    "linkedin": "",
+    "github": "",
+    "portfolio": ""
+  },
+  "summary": "",
+  "skills": [],
+  "education": [],
+  "experience": [],
+  "projects": [],
+  "certifications": [],
+  "achievements": []
+}
+
+Do not invent anything.
+`,
+        MODEL,
+        {
+          responseMimeType:
+            "application/json",
+          maxOutputTokens: 2200,
+        }
+      );
+
+    return normalizeResume(
+      parseAIJson(raw)
+    );
+  };
+
+/* =========================================================
    EXPORTS
-===================================================== */
+========================================================= */
 
 module.exports = {
   generateSummary,
@@ -1764,4 +1847,6 @@ module.exports = {
   analyzeCompletedInterview,
   generateResume,
   enhanceResume,
+  analyzeResumeJobMatch,
+  parseResumeJson,
 };

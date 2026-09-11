@@ -45,6 +45,106 @@ const BILL_TYPES = [
   { value: "Other", icon: FileText },
 ];
 
+/* =========================================================
+   OFFICIAL BILL PROVIDERS
+========================================================= */
+
+const OFFICIAL_BILL_PROVIDERS = [
+  {
+    name: "Jio",
+    keywords: [
+      "jio",
+      "reliance jio",
+      "jio true 5g",
+      "reliance jio infocomm",
+    ],
+    url: "https://www.jio.com/selfcare/paybill/",
+  },
+  {
+    name: "Airtel",
+    keywords: [
+      "airtel",
+      "bharti airtel",
+      "bharti airtel limited",
+    ],
+    url: "https://www.airtel.in/broadband-bill-pay",
+  },
+  {
+    name: "Vi",
+    keywords: [
+      "vodafone idea",
+      "vodafone idea limited",
+      "vodafone",
+      "idea cellular",
+    ],
+    url: "https://www.myvi.in/",
+  },
+  {
+    name: "APEPDCL",
+    keywords: [
+      "apepdcl",
+      "eastern power distribution",
+      "andhra pradesh eastern power",
+      "andhra pradesh eastern power distribution company",
+    ],
+    url: "https://www.apeasternpower.com/",
+  },
+  {
+    name: "APSPDCL",
+    keywords: [
+      "apspdcl",
+      "southern power distribution",
+      "southern power distribution company of a.p.",
+      "southern power distribution company of andhra pradesh",
+    ],
+    url: "https://www.apspdcl.in/",
+  },
+];
+
+/* =========================================================
+   PROVIDER DETECTION
+========================================================= */
+
+const detectBillProvider = (analysisText = "") => {
+  const normalizedText = String(analysisText)
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalizedText) {
+    return null;
+  }
+
+  for (const provider of OFFICIAL_BILL_PROVIDERS) {
+    for (const keyword of provider.keywords) {
+      const normalizedKeyword = keyword
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (!normalizedKeyword) {
+        continue;
+      }
+
+      const escapedKeyword = normalizedKeyword.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&"
+      );
+
+      const pattern = new RegExp(
+        `(^|[^a-z0-9])${escapedKeyword}([^a-z0-9]|$)`,
+        "i"
+      );
+
+      if (pattern.test(normalizedText)) {
+        return provider;
+      }
+    }
+  }
+
+  return null;
+};
+
 const COPY = {
   English: {
     badge: "BILL INTELLIGENCE",
@@ -119,6 +219,14 @@ const COPY = {
       "AI analysis failed. Please try again.",
     chatFailed:
       "Could not create the bill chat.",
+
+    payBill: "Pay your bill",
+    payBillDescription:
+      "Continue to the official provider website to make your payment.",
+    payMyBill: "Pay My Bill",
+    providerNotRecognized: "Provider not recognized",
+    providerUnknownDescription:
+      "PaperPal could not confidently identify the bill provider, so no payment link is shown.",
   },
 
   Hindi: {
@@ -180,14 +288,28 @@ const COPY = {
     followUps: "आगे के सवाल पूछें",
     followUpsHint: "उसी बिल के बारे में चैट जारी रखें।",
     newBill: "नया बिल",
-    uploadError: "कृपया PDF, JPG, JPEG या PNG बिल चुनें।",
-    languageRequired: "कृपया बिल विश्लेषण के लिए भाषा चुनें।",
-    fileRequired: "पहले बिल अपलोड करें या उसकी फोटो लें।",
+    uploadError:
+      "कृपया PDF, JPG, JPEG या PNG बिल चुनें।",
+    languageRequired:
+      "कृपया बिल विश्लेषण के लिए भाषा चुनें।",
+    fileRequired:
+      "पहले बिल अपलोड करें या उसकी फोटो लें।",
     uploadedButNoId:
       "बिल अपलोड हो गया लेकिन दस्तावेज़ ID नहीं मिली।",
-    uploadFailed: "बिल अपलोड नहीं हो पाया। फिर से कोशिश करें।",
-    analysisFailed: "AI विश्लेषण विफल हुआ। फिर से कोशिश करें।",
-    chatFailed: "बिल चैट नहीं बनाई जा सकी।",
+    uploadFailed:
+      "बिल अपलोड नहीं हो पाया। फिर से कोशिश करें।",
+    analysisFailed:
+      "AI विश्लेषण विफल हुआ। फिर से कोशिश करें।",
+    chatFailed:
+      "बिल चैट नहीं बनाई जा सकी।",
+
+    payBill: "अपना बिल भुगतान करें",
+    payBillDescription:
+      "भुगतान करने के लिए आधिकारिक प्रदाता की वेबसाइट पर जाएं।",
+    payMyBill: "बिल भुगतान करें",
+    providerNotRecognized: "प्रदाता पहचाना नहीं गया",
+    providerUnknownDescription:
+      "PaperPal बिल प्रदाता की विश्वसनीय पहचान नहीं कर पाया, इसलिए कोई भुगतान लिंक नहीं दिखाया गया।",
   },
 
   Telugu: {
@@ -262,6 +384,14 @@ const COPY = {
     analysisFailed:
       "AI విశ్లేషణ విఫలమైంది. మళ్లీ ప్రయత్నించండి.",
     chatFailed: "బిల్ చాట్‌ను సృష్టించలేకపోయాం.",
+
+    payBill: "మీ బిల్‌ను చెల్లించండి",
+    payBillDescription:
+      "చెల్లింపు చేయడానికి అధికారిక ప్రొవైడర్ వెబ్‌సైట్‌కు వెళ్లండి.",
+    payMyBill: "బిల్ చెల్లించండి",
+    providerNotRecognized: "ప్రొవైడర్ గుర్తించబడలేదు",
+    providerUnknownDescription:
+      "PaperPal బిల్ ప్రొవైడర్‌ను విశ్వసనీయంగా గుర్తించలేకపోయింది, కాబట్టి చెల్లింపు లింక్ చూపించబడలేదు.",
   },
 
   Tamil: {
@@ -337,6 +467,14 @@ const COPY = {
       "AI பகுப்பாய்வு தோல்வியடைந்தது. மீண்டும் முயற்சிக்கவும்.",
     chatFailed:
       "பில் உரையாடலை உருவாக்க முடியவில்லை.",
+
+    payBill: "உங்கள் பில் செலுத்துங்கள்",
+    payBillDescription:
+      "பணம் செலுத்த அதிகாரப்பூர்வ வழங்குநர் இணையதளத்திற்குச் செல்லுங்கள்.",
+    payMyBill: "பில் செலுத்தவும்",
+    providerNotRecognized: "வழங்குநர் அடையாளம் காணப்படவில்லை",
+    providerUnknownDescription:
+      "PaperPal பில் வழங்குநரை நம்பகத்தன்மையுடன் அடையாளம் காண முடியவில்லை, எனவே கட்டண இணைப்பு காட்டப்படவில்லை.",
   },
 
   Kannada: {
@@ -412,6 +550,14 @@ const COPY = {
     analysisFailed:
       "AI ವಿಶ್ಲೇಷಣೆ ವಿಫಲವಾಗಿದೆ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
     chatFailed: "ಬಿಲ್ ಚಾಟ್ ರಚಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+
+    payBill: "ನಿಮ್ಮ ಬಿಲ್ ಪಾವತಿಸಿ",
+    payBillDescription:
+      "ಪಾವತಿ ಮಾಡಲು ಅಧಿಕೃತ ಪೂರೈಕೆದಾರರ ವೆಬ್‌ಸೈಟ್‌ಗೆ ಹೋಗಿ.",
+    payMyBill: "ಬಿಲ್ ಪಾವತಿಸಿ",
+    providerNotRecognized: "ಪೂರೈಕೆದಾರ ಗುರುತಿಸಲಾಗಿಲ್ಲ",
+    providerUnknownDescription:
+      "PaperPal ಬಿಲ್ ಪೂರೈಕೆದಾರರನ್ನು ವಿಶ್ವಾಸಾರ್ಹವಾಗಿ ಗುರುತಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ, ಆದ್ದರಿಂದ ಪಾವತಿ ಲಿಂಕ್ ತೋರಿಸಲಾಗಿಲ್ಲ.",
   },
 };
 
@@ -448,6 +594,9 @@ const Bills = () => {
     useState("");
 
   const [documentId, setDocumentId] =
+    useState(null);
+
+  const [billProvider, setBillProvider] =
     useState(null);
 
   const [error, setError] =
@@ -499,13 +648,31 @@ const Bills = () => {
     setError("");
     setAnalysis("");
     setDocumentId(null);
+    setBillProvider(null);
     setSaved(false);
+  };
+
+  const removeSelectedFile = () => {
+    setSelectedFile(null);
+    setAnalysis("");
+    setDocumentId(null);
+    setBillProvider(null);
+    setSaved(false);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = "";
+    }
   };
 
   const resetBill = () => {
     setSelectedFile(null);
     setAnalysis("");
     setDocumentId(null);
+    setBillProvider(null);
     setError("");
     setSaved(false);
 
@@ -549,6 +716,7 @@ requested language:
 4. CHARGE BREAKDOWN
 5. IMPORTANT ALERTS
 6. SAVING TIPS
+7. BILL PROVIDER
 
 Rules:
 - Carefully inspect the uploaded document.
@@ -557,6 +725,11 @@ Rules:
 - If a specific item is not available, clearly say that it
   is not available in the bill in the requested language.
 - Explain everything in simple, friendly language.
+- For BILL PROVIDER, include the company/provider name only
+  when it is clearly visible or confidently identifiable
+  from the uploaded bill.
+- Do not guess the provider.
+- If the provider is unclear or unavailable, clearly say so.
 `;
 
   const analyzeBill = async (id) => {
@@ -580,6 +753,9 @@ Rules:
       }
 
       setAnalysis(answer);
+      setBillProvider(
+        detectBillProvider(answer)
+      );
     } catch (err) {
       console.error(
         "Bill Analysis Error:",
@@ -613,6 +789,7 @@ Rules:
       setAnalyzing(false);
       setAnalysis("");
       setDocumentId(null);
+      setBillProvider(null);
       setError("");
       setSaved(false);
 
@@ -860,6 +1037,7 @@ bill facts grounded in the uploaded document.
 
             {selectedFile && (
               <button
+                type="button"
                 className="bills-reset-button"
                 onClick={resetBill}
                 disabled={isBusy}
@@ -879,9 +1057,11 @@ bill facts grounded in the uploaded document.
         {error && (
           <div className="bills-error">
             <AlertTriangle size={17} />
+
             <span>{error}</span>
 
             <button
+              type="button"
               onClick={() => setError("")}
               aria-label="Close error"
             >
@@ -1003,6 +1183,7 @@ bill facts grounded in the uploaded document.
                       disabled={isBusy}
                     >
                       <Icon size={16} />
+
                       <span>
                         {getBillTypeLabel(
                           value,
@@ -1066,18 +1247,14 @@ bill facts grounded in the uploaded document.
                     </strong>
 
                     <span>
-                      {
-                        copy.ready
-                      }
+                      {copy.ready}
                     </span>
                   </div>
 
                   <button
                     type="button"
-                    onClick={() =>
-                      setSelectedFile(
-                        null
-                      )
+                    onClick={
+                      removeSelectedFile
                     }
                     aria-label="Remove file"
                   >
@@ -1209,6 +1386,52 @@ bill facts grounded in the uploaded document.
           </section>
         </section>
 
+        {/* =====================================================
+            PAY MY BILL
+        ===================================================== */}
+
+        {analysis &&
+          !analyzing && (
+            <section className="bill-pay-card">
+              <div className="bill-pay-icon">
+                <CreditCard size={20} />
+              </div>
+
+              <div className="bill-pay-content">
+                <strong>
+                  {billProvider
+                    ? `${copy.payBill} — ${billProvider.name}`
+                    : copy.payBill}
+                </strong>
+
+                <p>
+                  {billProvider
+                    ? copy.payBillDescription
+                    : copy.providerUnknownDescription}
+                </p>
+              </div>
+
+              {billProvider ? (
+                <a
+                  href={billProvider.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bill-pay-button"
+                >
+                  <CreditCard size={16} />
+
+                  {copy.payMyBill}
+
+                  <ArrowRight size={16} />
+                </a>
+              ) : (
+                <div className="bill-provider-unknown">
+                  {copy.providerNotRecognized}
+                </div>
+              )}
+            </section>
+          )}
+
         {analysis &&
           !analyzing && (
             <section className="bill-actions">
@@ -1234,6 +1457,7 @@ bill facts grounded in the uploaded document.
 
               <div className="action-buttons">
                 <button
+                  type="button"
                   className="primary"
                   onClick={
                     handleContinueChat
@@ -1259,6 +1483,7 @@ bill facts grounded in the uploaded document.
                 </button>
 
                 <button
+                  type="button"
                   onClick={() =>
                     cameraInputRef.current?.click()
                   }
@@ -1267,12 +1492,14 @@ bill facts grounded in the uploaded document.
                   }
                 >
                   <Camera size={16} />
+
                   {
                     copy.anotherPhoto
                   }
                 </button>
 
                 <button
+                  type="button"
                   onClick={
                     handleSaveAll
                   }

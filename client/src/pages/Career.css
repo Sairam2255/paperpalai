@@ -1767,116 +1767,6 @@
 
 
 /* =========================================================
-   RESPONSIVE
-========================================================= */
-
-@media (max-width: 900px) {
-  .career-page {
-    padding: 28px 22px 45px;
-  }
-
-  .career-main-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .career-skills-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .interview-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 750px) {
-  .job-card {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .job-card-side {
-    width: 100%;
-    align-items: flex-start;
-  }
-
-  .job-apply-button {
-    width: 100%;
-  }
-
-  .final-score-card {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .ai-interviewer-panel {
-    align-items: flex-start;
-  }
-}
-
-@media (max-width: 650px) {
-  .career-page {
-    padding: 22px 15px 35px;
-  }
-
-  .career-title {
-    font-size: 31px !important;
-  }
-
-  .career-card {
-    padding: 19px;
-  }
-
-  .career-goal-input-row {
-    flex-direction: column;
-  }
-
-  .career-btn-primary {
-    width: 100%;
-  }
-
-  .career-path-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .voice-interview-controls {
-    flex-direction: column;
-  }
-
-  .mic-action-button,
-  .submit-voice-answer-button {
-    width: 100%;
-  }
-
-  .microphone-panel {
-    align-items: flex-start;
-  }
-
-  .career-modal {
-    padding: 18px;
-    border-radius: 17px;
-  }
-
-  .career-modal h2 {
-    font-size: 20px;
-  }
-
-  .interview-question-card h3 {
-    font-size: 16px;
-  }
-
-  .final-score-ring {
-    width: 125px;
-    height: 125px;
-  }
-
-  .final-score-ring > div {
-    width: 97px;
-    height: 97px;
-  }
-}
-
-
-/* =========================================================
    RESUME BUILDER
 ========================================================= */
 
@@ -2383,6 +2273,422 @@
 
 
 /* =========================================================
+   ATS / RESUME & JOB MATCH
+========================================================= */
+
+.ats-analysis-card {
+  overflow: hidden;
+}
+
+.ats-analysis-form {
+  margin-top: 22px;
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(260px, 310px)
+    minmax(0, 1fr);
+
+  grid-template-areas:
+    "upload role"
+    "upload description"
+    "button description";
+
+  gap: 18px;
+
+  align-items: start;
+}
+
+
+/* =========================================================
+   ATS UPLOAD
+========================================================= */
+
+.ats-upload-box {
+  grid-area: upload;
+
+  width: 100%;
+  min-height: 175px;
+
+  box-sizing: border-box;
+
+  padding: 22px 18px;
+
+  border: 1.5px dashed #d8cbe3;
+  border-radius: 16px;
+
+  background: #fcfaff;
+  color: #7c3db7;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  text-align: center;
+
+  cursor: pointer;
+
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.ats-upload-box:hover {
+  border-color: #a96dd7;
+  background: #faf5ff;
+  transform: translateY(-1px);
+}
+
+.ats-upload-box:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ats-upload-box svg {
+  width: 25px;
+  height: 25px;
+}
+
+.ats-upload-box strong {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  color: #44384d;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.ats-upload-box span {
+  color: #9a909f;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+
+/* =========================================================
+   ATS FIELD GROUPS
+========================================================= */
+
+.ats-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ats-field-group label {
+  color: #4c4054;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+
+/* =========================================================
+   ATS TARGET ROLE
+========================================================= */
+
+.ats-analysis-form
+  .ats-field-group:not(.ats-job-description-group) {
+  grid-area: role;
+}
+
+.ats-analysis-form .career-input {
+  width: 100%;
+  min-height: 46px;
+  box-sizing: border-box;
+
+  padding: 11px 13px;
+
+  border: 1px solid #ddd7e6;
+  border-radius: 12px;
+
+  background: #ffffff;
+  color: #28222e;
+
+  font-size: 13px;
+  outline: none;
+}
+
+.ats-analysis-form .career-input::placeholder {
+  color: #aaa4b0;
+}
+
+.ats-analysis-form .career-input:focus {
+  border-color: #9b54df;
+
+  box-shadow:
+    0 0 0 4px
+    rgba(155, 84, 223, 0.1);
+}
+
+
+/* =========================================================
+   ATS JOB DESCRIPTION
+========================================================= */
+
+.ats-job-description-group {
+  grid-area: description;
+  min-width: 0;
+}
+
+.ats-job-description {
+  width: 100%;
+  min-height: 175px;
+
+  box-sizing: border-box;
+
+  padding: 13px 14px;
+
+  border: 1px solid #ddd7e6;
+  border-radius: 12px;
+
+  background: #ffffff;
+  color: #28222e;
+
+  font-size: 13px;
+  line-height: 1.55;
+
+  outline: none;
+  resize: vertical;
+
+  font-family: inherit;
+}
+
+.ats-job-description::placeholder {
+  color: #aaa4b0;
+}
+
+.ats-job-description:focus {
+  border-color: #9b54df;
+
+  box-shadow:
+    0 0 0 4px
+    rgba(155, 84, 223, 0.1);
+}
+
+
+/* =========================================================
+   ATS ANALYZE BUTTON
+========================================================= */
+
+.ats-analyze-button {
+  grid-area: button;
+
+  width: 100%;
+  min-height: 46px;
+
+  justify-content: center;
+  align-items: center;
+}
+
+
+/* =========================================================
+   ATS ERROR
+========================================================= */
+
+.ats-error {
+  grid-column: 1 / -1;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 11px 13px;
+
+  border-radius: 10px;
+
+  background: #fff2f2;
+  border: 1px solid #efcccc;
+
+  color: #b53c3c;
+
+  font-size: 11px;
+}
+
+
+/* =========================================================
+   ATS RESULTS
+========================================================= */
+
+.ats-result-panel {
+  margin-top: 22px;
+
+  padding-top: 20px;
+
+  border-top: 1px solid #ece5f1;
+
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ats-score-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  gap: 12px;
+}
+
+.ats-score-card {
+  padding: 15px;
+
+  border: 1px solid #ebe4ef;
+  border-radius: 13px;
+
+  background: #fdfbff;
+}
+
+.ats-score-card > span {
+  display: block;
+  color: #837889;
+  font-size: 10px;
+}
+
+.ats-score-card strong {
+  display: block;
+
+  margin-top: 6px;
+
+  color: #7c3abd;
+
+  font-size: 27px;
+  font-weight: 850;
+}
+
+.ats-score-track {
+  width: 100%;
+  height: 7px;
+
+  margin-top: 9px;
+
+  border-radius: 100px;
+
+  background: #eee8f2;
+
+  overflow: hidden;
+}
+
+.ats-score-fill {
+  height: 100%;
+
+  border-radius: inherit;
+
+  background:
+    linear-gradient(
+      90deg,
+      #7c3abd,
+      #a65ee0
+    );
+}
+
+
+/* =========================================================
+   ATS KEYWORDS
+========================================================= */
+
+.ats-keyword-section,
+.ats-suggestions-box {
+  padding: 14px;
+
+  border: 1px solid #ebe4ef;
+  border-radius: 12px;
+
+  background: #ffffff;
+}
+
+.ats-subheading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  color: #4b4054;
+
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ats-keyword-section.matched
+  .ats-subheading {
+  color: #32834b;
+}
+
+.ats-keyword-section.missing
+  .ats-subheading {
+  color: #bd7e1b;
+}
+
+.ats-chip-list {
+  margin-top: 9px;
+
+  display: flex;
+  flex-wrap: wrap;
+
+  gap: 6px;
+}
+
+.ats-chip-list span {
+  padding: 6px 8px;
+
+  border-radius: 8px;
+  border: 1px solid #e9e1ee;
+
+  background: #fcfaff;
+  color: #5d5366;
+
+  font-size: 10px;
+}
+
+.ats-empty-list,
+.ats-suggestions-box p {
+  margin: 8px 0 0;
+
+  color: #938996;
+
+  font-size: 10px;
+}
+
+.ats-suggestions-box ul {
+  margin: 9px 0 0;
+  padding-left: 17px;
+
+  color: #655b6e;
+}
+
+.ats-suggestions-box li {
+  margin: 5px 0;
+
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.ats-disclaimer {
+  display: flex;
+  align-items: flex-start;
+
+  gap: 6px;
+
+  padding: 9px 10px;
+
+  border-radius: 9px;
+
+  background: #f7f1fb;
+  color: #795995;
+
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+
+/* =========================================================
    PRINT
 ========================================================= */
 
@@ -2414,8 +2720,65 @@
 
 
 /* =========================================================
-   RESUME RESPONSIVE
+   RESPONSIVE
 ========================================================= */
+
+@media (max-width: 900px) {
+  .career-page {
+    padding: 28px 22px 45px;
+  }
+
+  .career-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .career-skills-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .interview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ats-analysis-form {
+    grid-template-columns: 1fr;
+
+    grid-template-areas:
+      "upload"
+      "role"
+      "description"
+      "button";
+  }
+
+  .ats-score-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 750px) {
+  .job-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .job-card-side {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .job-apply-button {
+    width: 100%;
+  }
+
+  .final-score-card {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .ai-interviewer-panel {
+    align-items: flex-start;
+  }
+}
 
 @media (max-width: 700px) {
   .resume-form-grid {
@@ -2442,3 +2805,638 @@
     padding: 22px;
   }
 }
+
+@media (max-width: 650px) {
+  .career-page {
+    padding: 22px 15px 35px;
+  }
+
+  .career-title {
+    font-size: 31px !important;
+  }
+
+  .career-card {
+    padding: 19px;
+  }
+
+  .career-goal-input-row {
+    flex-direction: column;
+  }
+
+  .career-btn-primary {
+    width: 100%;
+  }
+
+  .career-path-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .voice-interview-controls {
+    flex-direction: column;
+  }
+
+  .mic-action-button,
+  .submit-voice-answer-button {
+    width: 100%;
+  }
+
+  .microphone-panel {
+    align-items: flex-start;
+  }
+
+  .career-modal {
+    padding: 18px;
+    border-radius: 17px;
+  }
+
+  .career-modal h2 {
+    font-size: 20px;
+  }
+
+  .interview-question-card h3 {
+    font-size: 16px;
+  }
+
+  .final-score-ring {
+    width: 125px;
+    height: 125px;
+  }
+
+  .final-score-ring > div {
+    width: 97px;
+    height: 97px;
+  }
+}
+
+
+/* =========================================================
+   PAPERPAL DARK MODE — CAREER
+========================================================= */
+
+html[data-theme="dark"] .career-page,
+body[data-theme="dark"] .career-page {
+  background: #06080d;
+  color: #f1f5f9;
+}
+
+html[data-theme="dark"] .career-card,
+body[data-theme="dark"] .career-card {
+  background: #0b1018;
+  border-color: #202a38;
+  box-shadow:
+    0 8px 30px
+    rgba(0, 0, 0, 0.22);
+}
+
+html[data-theme="dark"] .career-title,
+body[data-theme="dark"] .career-title,
+html[data-theme="dark"] .career-card-heading h2,
+body[data-theme="dark"] .career-card-heading h2,
+html[data-theme="dark"] .career-section-header h2,
+body[data-theme="dark"] .career-section-header h2 {
+  color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .career-subtitle,
+body[data-theme="dark"] .career-subtitle,
+html[data-theme="dark"] .career-card-heading p,
+body[data-theme="dark"] .career-card-heading p,
+html[data-theme="dark"] .career-section-header p,
+body[data-theme="dark"] .career-section-header p {
+  color: #95a1b2;
+}
+
+html[data-theme="dark"] .career-input,
+body[data-theme="dark"] .career-input {
+  background: #0e141e;
+  color: #f1f5f9;
+  border-color: #202a38;
+}
+
+html[data-theme="dark"] .career-input::placeholder,
+body[data-theme="dark"] .career-input::placeholder {
+  color: #718096;
+}
+
+html[data-theme="dark"] .career-path-button,
+body[data-theme="dark"] .career-path-button {
+  background: #0e141e !important;
+  border-color: #2a3443 !important;
+  color: #e5e7eb !important;
+}
+
+html[data-theme="dark"] .career-path-button:hover,
+body[data-theme="dark"] .career-path-button:hover {
+  background: #131a25 !important;
+  border-color: #7350a7 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .career-path-button.active,
+body[data-theme="dark"] .career-path-button.active {
+  background: rgba(
+    137,
+    83,
+    204,
+    0.16
+  ) !important;
+
+  border-color: #9b6bdf !important;
+  color: #d8baff !important;
+
+  box-shadow:
+    0 0 0 1px
+    rgba(155, 107, 223, 0.12);
+}
+
+html[data-theme="dark"] .career-path-button svg,
+body[data-theme="dark"] .career-path-button svg {
+  color: #9b6bdf;
+  flex-shrink: 0;
+}
+
+
+/* =========================================================
+   DARK MODE — ATS
+========================================================= */
+
+html[data-theme="dark"] .ats-upload-box,
+body[data-theme="dark"] .ats-upload-box {
+  background: #0e141e;
+  border-color: #514064;
+  color: #c98cff;
+}
+
+html[data-theme="dark"] .ats-upload-box:hover,
+body[data-theme="dark"] .ats-upload-box:hover {
+  background: #131a25;
+  border-color: #8c61bb;
+}
+
+html[data-theme="dark"] .ats-upload-box strong,
+body[data-theme="dark"] .ats-upload-box strong {
+  color: #f1f5f9;
+}
+
+html[data-theme="dark"] .ats-upload-box span,
+body[data-theme="dark"] .ats-upload-box span {
+  color: #8490a1;
+}
+
+html[data-theme="dark"] .ats-field-group label,
+body[data-theme="dark"] .ats-field-group label {
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"]
+  .ats-analysis-form
+  .career-input,
+body[data-theme="dark"]
+  .ats-analysis-form
+  .career-input {
+  background: #0e141e;
+  color: #f1f5f9;
+  border-color: #202a38;
+}
+
+html[data-theme="dark"]
+  .ats-analysis-form
+  .career-input::placeholder,
+body[data-theme="dark"]
+  .ats-analysis-form
+  .career-input::placeholder {
+  color: #718096;
+}
+
+html[data-theme="dark"] .ats-job-description,
+body[data-theme="dark"] .ats-job-description {
+  background: #0e141e;
+  color: #f1f5f9;
+  border-color: #202a38;
+}
+
+html[data-theme="dark"] .ats-job-description::placeholder,
+body[data-theme="dark"] .ats-job-description::placeholder {
+  color: #718096;
+}
+
+html[data-theme="dark"] .ats-job-description:focus,
+body[data-theme="dark"] .ats-job-description:focus,
+html[data-theme="dark"]
+  .ats-analysis-form
+  .career-input:focus,
+body[data-theme="dark"]
+  .ats-analysis-form
+  .career-input:focus {
+  border-color: #9b6bdf;
+
+  box-shadow:
+    0 0 0 4px
+    rgba(155, 107, 223, 0.13);
+}
+
+html[data-theme="dark"] .ats-result-panel,
+body[data-theme="dark"] .ats-result-panel {
+  border-top-color: #252e3b;
+}
+
+html[data-theme="dark"] .ats-score-card,
+body[data-theme="dark"] .ats-score-card {
+  background: #0e141e;
+  border-color: #202a38;
+}
+
+html[data-theme="dark"] .ats-score-card > span,
+body[data-theme="dark"] .ats-score-card > span {
+  color: #8995a6;
+}
+
+html[data-theme="dark"] .ats-score-card strong,
+body[data-theme="dark"] .ats-score-card strong {
+  color: #c084fc;
+}
+
+html[data-theme="dark"] .ats-score-track,
+body[data-theme="dark"] .ats-score-track {
+  background: #242d3a;
+}
+
+html[data-theme="dark"] .ats-keyword-section,
+body[data-theme="dark"] .ats-keyword-section,
+html[data-theme="dark"] .ats-suggestions-box,
+body[data-theme="dark"] .ats-suggestions-box {
+  background: #0e141e;
+  border-color: #202a38;
+}
+
+html[data-theme="dark"] .ats-subheading,
+body[data-theme="dark"] .ats-subheading {
+  color: #d2dae5;
+}
+
+html[data-theme="dark"] .ats-chip-list span,
+body[data-theme="dark"] .ats-chip-list span {
+  background: #131a25;
+  border-color: #2a3443;
+  color: #b8c2cf;
+}
+
+html[data-theme="dark"] .ats-empty-list,
+body[data-theme="dark"] .ats-empty-list,
+html[data-theme="dark"] .ats-suggestions-box p,
+body[data-theme="dark"] .ats-suggestions-box p {
+  color: #7f8a9a;
+}
+
+html[data-theme="dark"] .ats-suggestions-box ul,
+body[data-theme="dark"] .ats-suggestions-box ul {
+  color: #aeb8c5;
+}
+
+html[data-theme="dark"] .ats-disclaimer,
+body[data-theme="dark"] .ats-disclaimer {
+  background: #15111c;
+  color: #9f82b7;
+}
+
+html[data-theme="dark"] .ats-error,
+body[data-theme="dark"] .ats-error {
+  background: #241316;
+  border-color: #5d3035;
+  color: #ff9d9d;
+}
+
+
+/* =========================================================
+   DARK MODE — OTHER CAREER COMPONENTS
+========================================================= */
+
+html[data-theme="dark"] .career-goal-card,
+body[data-theme="dark"] .career-goal-card {
+  background: #0b1018;
+  border-color: #202a38;
+}
+
+html[data-theme="dark"] .career-readiness-card,
+body[data-theme="dark"] .career-readiness-card {
+  background: #0b1018;
+}
+
+html[data-theme="dark"] .resume-mode-card,
+body[data-theme="dark"] .resume-mode-card {
+  background: #0e141e;
+  border-color: #202a38;
+}
+
+html[data-theme="dark"] .resume-mode-card:hover,
+body[data-theme="dark"] .resume-mode-card:hover {
+  background: #131a25;
+  border-color: #7350a7;
+}
+
+html[data-theme="dark"] .resume-mode-content strong,
+body[data-theme="dark"] .resume-mode-content strong {
+  color: #f1f5f9;
+}
+
+html[data-theme="dark"] .resume-mode-content span,
+body[data-theme="dark"] .resume-mode-content span {
+  color: #8995a6;
+}
+
+html[data-theme="dark"] .existing-resume-strip,
+body[data-theme="dark"] .existing-resume-strip {
+  background: #0e141e;
+  border-color: #202a38;
+  color: #9aa6b5;
+}
+
+html[data-theme="dark"] .job-card,
+body[data-theme="dark"] .job-card {
+  background: #0e141e;
+  border-color: #202a38;
+}
+
+html[data-theme="dark"] .job-card:hover,
+body[data-theme="dark"] .job-card:hover {
+  background: #131a25;
+}
+
+html[data-theme="dark"] .job-info h3,
+body[data-theme="dark"] .job-info h3 {
+  color: #f1f5f9;
+}
+
+html[data-theme="dark"] .job-meta,
+body[data-theme="dark"] .job-meta,
+html[data-theme="dark"] .job-reason,
+body[data-theme="dark"] .job-reason {
+  color: #8995a6;
+}
+
+html[data-theme="dark"] .roadmap-title-row h3,
+body[data-theme="dark"] .roadmap-title-row h3 {
+  color: #e7edf5;
+}
+
+html[data-theme="dark"] .roadmap-content p,
+body[data-theme="dark"] .roadmap-content p {
+  color: #8e99aa;
+}
+
+html[data-theme="dark"] .interview-card,
+body[data-theme="dark"] .interview-card {
+  background: #0e141e;
+  border-color: #202a38;
+}
+
+html[data-theme="dark"] .interview-card:hover,
+body[data-theme="dark"] .interview-card:hover {
+  background: #131a25;
+}
+
+html[data-theme="dark"] .interview-card h3,
+body[data-theme="dark"] .interview-card h3 {
+  color: #f1f5f9;
+}
+
+html[data-theme="dark"] .interview-card p,
+body[data-theme="dark"] .interview-card p {
+  color: #8995a6;
+}
+
+
+/* =========================================================
+   DARK MODE — MODAL
+========================================================= */
+
+html[data-theme="dark"] .career-modal-overlay,
+body[data-theme="dark"] .career-modal-overlay {
+  background: rgba(
+    0,
+    0,
+    0,
+    0.72
+  );
+}
+
+html[data-theme="dark"] .career-modal,
+body[data-theme="dark"] .career-modal {
+  background: #0b1018;
+  border: 1px solid #202a38;
+}
+
+html[data-theme="dark"] .career-modal h2,
+body[data-theme="dark"] .career-modal h2 {
+  color: #f1f5f9;
+}
+
+html[data-theme="dark"] .career-modal-header p,
+body[data-theme="dark"] .career-modal-header p {
+  color: #8f9aaa;
+}
+
+html[data-theme="dark"] .career-modal-close,
+body[data-theme="dark"] .career-modal-close {
+  background: #0e141e;
+  border-color: #2a3443;
+  color: #9ca8b8;
+}
+
+html[data-theme="dark"] .career-modal-close:hover,
+body[data-theme="dark"] .career-modal-close:hover {
+  background: #151c27;
+}
+
+html[data-theme="dark"] .resume-form-section,
+body[data-theme="dark"] .resume-form-section {
+  background: #0e141e;
+  border-color: #202a38;
+}
+
+html[data-theme="dark"] .resume-form-heading h3,
+body[data-theme="dark"] .resume-form-heading h3 {
+  color: #e8eef5;
+}
+
+html[data-theme="dark"] .resume-field,
+body[data-theme="dark"] .resume-field {
+  background: #0a0f17;
+  color: #f1f5f9;
+  border-color: #202a38;
+}
+
+html[data-theme="dark"] .resume-field::placeholder,
+body[data-theme="dark"] .resume-field::placeholder {
+  color: #718096;
+}
+
+html[data-theme="dark"] .resume-job-section,
+body[data-theme="dark"] .resume-job-section {
+  background: #0e141e;
+}
+
+html[data-theme="dark"] .resume-enhance-dropzone,
+body[data-theme="dark"] .resume-enhance-dropzone {
+  background: #0a0f17;
+  border-color: #3a3048;
+  color: #929dad;
+}
+
+html[data-theme="dark"] .resume-enhance-dropzone strong,
+body[data-theme="dark"] .resume-enhance-dropzone strong {
+  color: #edf2f7;
+}
+
+
+/* =========================================================
+   DARK MODE — READINESS / INTERVIEW
+========================================================= */
+
+html[data-theme="dark"] .readiness-note,
+body[data-theme="dark"] .readiness-note {
+  color: #8d99a9;
+}
+
+html[data-theme="dark"] .interview-question-card,
+body[data-theme="dark"] .interview-question-card {
+  background: #0e141e;
+  border-color: #202a38;
+}
+
+html[data-theme="dark"] .interview-question-card h3,
+body[data-theme="dark"] .interview-question-card h3 {
+  color: #eef2f7;
+}
+
+html[data-theme="dark"] .microphone-panel,
+body[data-theme="dark"] .microphone-panel {
+  background: #0e141e;
+  border-color: #202a38;
+}
+
+html[data-theme="dark"] .mic-status-text strong,
+body[data-theme="dark"] .mic-status-text strong {
+  color: #eef2f7;
+}
+
+html[data-theme="dark"] .mic-status-text span,
+body[data-theme="dark"] .mic-status-text span {
+  color: #8995a6;
+}
+
+html[data-theme="dark"] .interview-answer,
+body[data-theme="dark"] .interview-answer {
+  background: #0a0f17;
+  border-color: #202a38;
+  color: #edf2f7;
+}
+
+html[data-theme="dark"] .answer-placeholder,
+body[data-theme="dark"] .answer-placeholder {
+  color: #667384;
+}
+
+html[data-theme="dark"] .voice-evaluation-card,
+body[data-theme="dark"] .voice-evaluation-card {
+  background: #0e141e;
+  border-color: #202a38;
+}
+
+html[data-theme="dark"] .evaluation-heading strong,
+body[data-theme="dark"] .evaluation-heading strong {
+  color: #f1f5f9;
+}
+
+html[data-theme="dark"] .evaluation-block h4,
+body[data-theme="dark"] .evaluation-block h4 {
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"] .evaluation-block p,
+body[data-theme="dark"] .evaluation-block p {
+  color: #8b96a6;
+}
+
+
+/* =========================================================
+   DARK MODE — RESULT AREAS
+========================================================= */
+
+html[data-theme="dark"] .final-score-card,
+body[data-theme="dark"] .final-score-card {
+  background: #0e141e;
+  border-color: #202a38;
+}
+
+html[data-theme="dark"] .final-score-ring > div,
+body[data-theme="dark"] .final-score-ring > div {
+  background: #0b1018;
+}
+
+html[data-theme="dark"] .final-score-title,
+body[data-theme="dark"] .final-score-title {
+  color: #f1f5f9;
+}
+
+html[data-theme="dark"] .final-score-description,
+body[data-theme="dark"] .final-score-description {
+  color: #8995a6;
+}
+
+html[data-theme="dark"] .final-result-section,
+body[data-theme="dark"] .final-result-section {
+  background: #0e141e;
+  border-color: #202a38;
+}
+
+html[data-theme="dark"] .result-section-heading h4,
+body[data-theme="dark"] .result-section-heading h4 {
+  color: #edf2f7;
+}
+
+html[data-theme="dark"] .final-result-section > p,
+body[data-theme="dark"] .final-result-section > p {
+  color: #8d98a8;
+}
+
+html[data-theme="dark"] .question-analysis-card,
+body[data-theme="dark"] .question-analysis-card {
+  background: #0e141e;
+  border-color: #202a38;
+}
+
+html[data-theme="dark"] .question-analysis-card h5,
+body[data-theme="dark"] .question-analysis-card h5 {
+  color: #edf2f7;
+}
+
+html[data-theme="dark"] .analysis-answer p,
+body[data-theme="dark"] .analysis-answer p,
+html[data-theme="dark"] .analysis-feedback p,
+body[data-theme="dark"] .analysis-feedback p,
+html[data-theme="dark"] .analysis-better-answer p,
+body[data-theme="dark"] .analysis-better-answer p {
+  color: #8d98a8;
+}
+
+
+/* =========================================================
+   DARK MODE — RESUME RESULT
+========================================================= */
+
+html[data-theme="dark"] .resume-result-toolbar h3,
+body[data-theme="dark"] .resume-result-toolbar h3 {
+  color: #edf2f7;
+}
+
+html[data-theme="dark"] .resume-ats-card,
+body[data-theme="dark"] .resume-ats-card {
+  background: #0e141e;
+  border-color: #202a38;
+}
+
+
+/* =========================================================
+   END
+========================================================= */

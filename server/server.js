@@ -4,58 +4,83 @@ require("dotenv").config();
 
 const connectDB = require("./config/db");
 
-// ==========================================
-// ROUTES
-// ==========================================
-const authRoutes = require("./routes/authRoutes");
-const documentRoutes = require("./routes/documentRoutes");
-const aiRoutes = require("./routes/aiRoutes");
-const careerRoutes = require("./routes/careerRoutes");
-const interviewRoutes = require("./routes/interviewRoutes");
-const resumeRoutes = require("./routes/resumeRoutes");
-const chatRoutes = require("./routes/chatRoutes");
+const aiKeyMiddleware =
+  require("./middleware/aiKeyMiddleware");
 
-// ==========================================
-// APP
-// ==========================================
+const authMiddleware =
+  require("./middleware/authMiddleware");
+
+const upload =
+  require("./middleware/resumeUploadMiddleware");
+
+const {
+  analyzeResume,
+} = require("./controllers/resumeController");
+
+const authRoutes =
+  require("./routes/authRoutes");
+
+const documentRoutes =
+  require("./routes/documentRoutes");
+
+const aiRoutes =
+  require("./routes/aiRoutes");
+
+const careerRoutes =
+  require("./routes/careerRoutes");
+
+const interviewRoutes =
+  require("./routes/interviewRoutes");
+
+const resumeRoutes =
+  require("./routes/resumeRoutes");
+
+const aiSettingsRoutes =
+  require("./routes/aiSettingsRoutes");
+
 const app = express();
-const PORT = process.env.PORT || 5000;
 
-// ==========================================
-// DATABASE
-// ==========================================
-connectDB();
+/* =========================================================
+   DEBUG
+========================================================= */
 
-// ==========================================
-// CORS
-// ==========================================
+console.log(
+  "🔥 PAPERPAL SERVER FILE LOADED"
+);
+
+console.log(
+  "🔥 SERVER FILE:",
+  __filename
+);
+
+const PORT =
+  process.env.PORT || 5000;
+
+/* =========================================================
+   CORS
+========================================================= */
 
 const allowedOrigins = [
-  // Local development
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
-
-  // Production frontend
   "https://paperpalai.vercel.app",
 ];
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // Allow requests with no Origin header
-      // such as Postman or server-side requests.
-      if (!origin) {
-        return callback(null, true);
+    origin(origin, callback) {
+      if (
+        !origin ||
+        allowedOrigins.includes(
+          origin
+        )
+      ) {
+        return callback(
+          null,
+          true
+        );
       }
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      console.error(
-        `CORS blocked origin: ${origin}`
-      );
 
       return callback(
         new Error(
@@ -64,13 +89,10 @@ app.use(
       );
     },
 
-    credentials: true,
-
     methods: [
       "GET",
       "POST",
       "PUT",
-      "PATCH",
       "DELETE",
       "OPTIONS",
     ],
@@ -79,33 +101,39 @@ app.use(
       "Content-Type",
       "Authorization",
     ],
+
+    credentials: true,
   })
 );
 
-// ==========================================
-// BODY PARSER
-// ==========================================
+/* =========================================================
+   BODY PARSING
+========================================================= */
+
 app.use(
   express.json({
     limit: "10mb",
   })
 );
 
-// ==========================================
-// GOOGLE POPUP / CROSS-ORIGIN COMPATIBILITY
-// ==========================================
-app.use((req, res, next) => {
-  res.setHeader(
-    "Cross-Origin-Opener-Policy",
-    "unsafe-none"
-  );
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: "10mb",
+  })
+);
 
-  next();
-});
+/* =========================================================
+   PERSONAL GEMINI KEY CONTEXT
+========================================================= */
 
-// ==========================================
-// API ROUTES
-// ==========================================
+app.use(
+  aiKeyMiddleware
+);
+
+/* =========================================================
+   NORMAL API ROUTES
+========================================================= */
 
 app.use(
   "/api/auth",
@@ -123,6 +151,11 @@ app.use(
 );
 
 app.use(
+  "/api/ai-settings",
+  aiSettingsRoutes
+);
+
+app.use(
   "/api/career",
   careerRoutes
 );
@@ -132,58 +165,86 @@ app.use(
   interviewRoutes
 );
 
+/* =========================================================
+   DIRECT ATS RESUME ANALYSIS ROUTE
+========================================================= */
+
+console.log(
+  "🔥 REGISTERING POST /api/resume/analyze"
+);
+
+app.post(
+  "/api/resume/analyze",
+  authMiddleware,
+  upload.single("resume"),
+  (req, res, next) => {
+    console.log(
+      "🔥 /api/resume/analyze ROUTE HIT"
+    );
+
+    analyzeResume(
+      req,
+      res,
+      next
+    );
+  }
+);
+
+/* =========================================================
+   OTHER RESUME ROUTES
+========================================================= */
+
 app.use(
   "/api/resume",
   resumeRoutes
 );
 
-app.use(
-  "/api/chat",
-  chatRoutes
+/* =========================================================
+   HEALTH CHECK
+========================================================= */
+
+app.get(
+  "/",
+  (req, res) => {
+    res.status(200).json({
+      message:
+        "PaperPal AI Backend is Running 🚀",
+    });
+  }
 );
 
-// ==========================================
-// HEALTH CHECK
-// ==========================================
-app.get("/", (req, res) => {
-  res.status(200).json({
-    message:
-      "PaperPal AI Backend is Running 🚀",
-  });
-});
+/* =========================================================
+   404
+========================================================= */
 
-// ==========================================
-// 404 HANDLER
-// ==========================================
-app.use((req, res) => {
-  res.status(404).json({
-    message:
-      `Route not found: ${req.method} ${req.originalUrl}`,
-  });
-});
-
-// ==========================================
-// ERROR HANDLER
-// ==========================================
 app.use(
-  (error, req, res, next) => {
+  (req, res) => {
+    res.status(404).json({
+      message:
+        `Route not found: ${req.method} ${req.originalUrl}`,
+    });
+  }
+);
+
+/* =========================================================
+   ERROR HANDLER
+========================================================= */
+
+app.use(
+  (
+    error,
+    req,
+    res,
+    next
+  ) => {
     console.error(
       "Server Error:",
       error
     );
 
-    // CORS errors
-    if (
-      error.message?.startsWith(
-        "CORS blocked origin:"
-      )
-    ) {
-      return res.status(403).json({
-        message: error.message,
-      });
-    }
-
-    return res.status(500).json({
+    return res.status(
+      error.status || 500
+    ).json({
       message:
         error.message ||
         "Internal server error.",
@@ -191,16 +252,31 @@ app.use(
   }
 );
 
-// ==========================================
-// START SERVER
-// ==========================================
-app.listen(PORT, () => {
-  console.log(
-    `PaperPal AI server running on port ${PORT} 🚀`
-  );
+/* =========================================================
+   START
+========================================================= */
 
-  console.log(
-    "Allowed origins:",
-    allowedOrigins
-  );
-});
+const startServer =
+  async () => {
+    try {
+      await connectDB();
+
+      app.listen(
+        PORT,
+        () => {
+          console.log(
+            `PaperPal AI server running on port ${PORT} 🚀`
+          );
+        }
+      );
+    } catch (error) {
+      console.error(
+        "Database connection / server startup failed:",
+        error
+      );
+
+      process.exit(1);
+    }
+  };
+
+startServer();

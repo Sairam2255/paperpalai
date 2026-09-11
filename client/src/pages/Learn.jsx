@@ -9,8 +9,10 @@ import {
   BookOpen,
   BarChart3,
   Brain,
+  Check,
   CheckCircle2,
   ChevronRight,
+  Clock3,
   Copy,
   Eye,
   History,
@@ -47,7 +49,8 @@ const quickTopics = [
   "Machine Learning",
 ];
 
-const QUIZ_HISTORY_KEY = "paperpal-learn-quiz-history";
+const QUIZ_HISTORY_KEY =
+  "paperpal-learn-quiz-history";
 
 const speechLanguages = {
   English: "en-US",
@@ -59,188 +62,553 @@ const speechLanguages = {
 
 const readQuizHistory = () => {
   try {
-    const raw = localStorage.getItem(QUIZ_HISTORY_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
+    const raw =
+      localStorage.getItem(
+        QUIZ_HISTORY_KEY
+      );
+
+    const parsed = raw
+      ? JSON.parse(raw)
+      : [];
+
+    return Array.isArray(parsed)
+      ? parsed
+      : [];
   } catch {
     return [];
   }
 };
 
+/* =========================================================
+   NORMALIZE QUIZ
+========================================================= */
+
+const normalizeQuizQuestions = (
+  questions = []
+) => {
+  return questions.map(
+    (question) => {
+      const options =
+        Array.isArray(
+          question?.options
+        )
+          ? question.options.map(
+              (option) =>
+                String(
+                  option ?? ""
+                ).trim()
+            )
+          : [];
+
+      let correctAnswer =
+        question?.correctAnswer;
+
+      if (
+        typeof correctAnswer ===
+        "string"
+      ) {
+        const value =
+          correctAnswer.trim();
+
+        if (
+          /^[0-3]$/.test(value)
+        ) {
+          correctAnswer =
+            Number(value);
+        } else if (
+          /^[A-D]$/i.test(value)
+        ) {
+          correctAnswer =
+            value
+              .toUpperCase()
+              .charCodeAt(0) -
+            65;
+        } else {
+          const exactMatch =
+            options.findIndex(
+              (option) =>
+                option.toLowerCase() ===
+                value.toLowerCase()
+            );
+
+          if (
+            exactMatch !== -1
+          ) {
+            correctAnswer =
+              exactMatch;
+          } else {
+            const parsed =
+              Number(value);
+
+            correctAnswer =
+              Number.isInteger(
+                parsed
+              )
+                ? parsed
+                : null;
+          }
+        }
+      } else {
+        const parsed =
+          Number(
+            correctAnswer
+          );
+
+        correctAnswer =
+          Number.isInteger(
+            parsed
+          )
+            ? parsed
+            : null;
+      }
+
+      if (
+        !Number.isInteger(
+          correctAnswer
+        ) ||
+        correctAnswer < 0 ||
+        correctAnswer >=
+          options.length
+      ) {
+        correctAnswer = null;
+      }
+
+      return {
+        ...question,
+        options,
+        correctAnswer,
+        explanation:
+          String(
+            question?.explanation ||
+              ""
+          ).trim(),
+      };
+    }
+  );
+};
+
+const RunnerLoader = ({ title, subtitle }) => (
+  <div
+    className="runner-loader"
+    role="status"
+    aria-live="polite"
+  >
+    <div className="runner-stage">
+      <div className="runner-track">
+        <div className="runner-shadow" />
+
+        <div className="runner-person">
+          <span className="runner-head">●</span>
+          <span className="runner-body" />
+          <span className="runner-arm runner-arm-one" />
+          <span className="runner-arm runner-arm-two" />
+          <span className="runner-leg runner-leg-one" />
+          <span className="runner-leg runner-leg-two" />
+        </div>
+
+        <Sparkles
+          className="runner-spark spark-one"
+          size={15}
+        />
+        <Sparkles
+          className="runner-spark spark-two"
+          size={11}
+        />
+        <Brain
+          className="runner-brain"
+          size={24}
+        />
+      </div>
+    </div>
+
+    <div className="runner-copy">
+      <strong>{title}</strong>
+      <span>{subtitle}</span>
+    </div>
+
+    <div className="runner-progress">
+      <span />
+    </div>
+  </div>
+);
+
 const Learn = () => {
-  const [conversationId, setConversationId] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const [
+    conversationId,
+    setConversationId,
+  ] = useState(null);
 
-  const [topic, setTopic] = useState("");
-  const [level, setLevel] = useState("Beginner");
-  const [language, setLanguage] = useState("English");
+  const [
+    messages,
+    setMessages,
+  ] = useState([]);
 
-  const [loading, setLoading] = useState(false);
-  const [loadingConversation, setLoadingConversation] = useState(false);
-  const [error, setError] = useState("");
+  const [topic, setTopic] =
+    useState("");
 
-  const [speaking, setSpeaking] = useState(false);
-  const [voiceListening, setVoiceListening] = useState(false);
+  const [level, setLevel] =
+    useState("Beginner");
 
-  const [modal, setModal] = useState(null);
-  const [translateLanguage, setTranslateLanguage] = useState("Telugu");
-  const [translation, setTranslation] = useState("");
-  const [translating, setTranslating] = useState(false);
+  const [language, setLanguage] =
+    useState("English");
 
-  const [quizCount, setQuizCount] = useState(5);
-  const [quizLevel, setQuizLevel] = useState("Beginner");
-  const [quizTopic, setQuizTopic] = useState("");
+  const [loading, setLoading] =
+    useState(false);
 
-  const [quizLoading, setQuizLoading] = useState(false);
-  const [quiz, setQuiz] = useState(null);
-  const [quizAnswers, setQuizAnswers] = useState([]);
-  const [quizSubmitted, setQuizSubmitted] = useState(false);
-  const [quizScore, setQuizScore] = useState(null);
+  const [
+    loadingConversation,
+    setLoadingConversation,
+  ] = useState(false);
 
-  const [quizHistory, setQuizHistory] = useState(readQuizHistory);
-  const [selectedHistory, setSelectedHistory] = useState(null);
+  const [error, setError] =
+    useState("");
 
-  const [copyStatus, setCopyStatus] = useState("");
-  const textareaRef = useRef(null);
-  const recognitionRef = useRef(null);
+  const [speaking, setSpeaking] =
+    useState(false);
 
-  useEffect(() => {
-    localStorage.setItem(
-      QUIZ_HISTORY_KEY,
-      JSON.stringify(quizHistory)
-    );
-  }, [quizHistory]);
+  const [
+    voiceListening,
+    setVoiceListening,
+  ] = useState(false);
 
-  const latestAssistant = useMemo(
-    () =>
-      [...messages]
-        .reverse()
-        .find((message) => message.role === "assistant"),
-    [messages]
+  const [modal, setModal] =
+    useState(null);
+
+  const [
+    translateLanguage,
+    setTranslateLanguage,
+  ] = useState("Telugu");
+
+  const [
+    translation,
+    setTranslation,
+  ] = useState("");
+
+  const [
+    translating,
+    setTranslating,
+  ] = useState(false);
+
+  /* =========================================================
+     QUIZ STATE
+  ========================================================= */
+
+  const [quizCount, setQuizCount] =
+    useState(5);
+
+  const [quizLevel, setQuizLevel] =
+    useState("Beginner");
+
+  const [quizTopic, setQuizTopic] =
+    useState("");
+
+  const [
+    quizLoading,
+    setQuizLoading,
+  ] = useState(false);
+
+  const [quiz, setQuiz] =
+    useState(null);
+
+  const [
+    quizAnswers,
+    setQuizAnswers,
+  ] = useState([]);
+
+  const [
+    quizSubmitted,
+    setQuizSubmitted,
+  ] = useState(false);
+
+  const [
+    quizScore,
+    setQuizScore,
+  ] = useState(null);
+
+  const [
+    quizHistory,
+    setQuizHistory,
+  ] = useState(
+    readQuizHistory
   );
 
-  const analytics = useMemo(() => {
-    const attempts = quizHistory.length;
-    const questionsPracticed = quizHistory.reduce(
-      (sum, item) => sum + Number(item.total || 0),
-      0
-    );
-    const correct = quizHistory.reduce(
-      (sum, item) => sum + Number(item.score || 0),
-      0
-    );
-    const average =
-      attempts > 0
-        ? Math.round(
-            quizHistory.reduce(
-              (sum, item) => sum + Number(item.percentage || 0),
-              0
-            ) / attempts
-          )
-        : 0;
-    const best =
-      attempts > 0
-        ? Math.max(
-            ...quizHistory.map((item) =>
-              Number(item.percentage || 0)
-            )
-          )
-        : 0;
+  const [
+    selectedHistory,
+    setSelectedHistory,
+  ] = useState(null);
 
-    return {
-      attempts,
-      questionsPracticed,
-      correct,
-      average,
-      best,
-    };
+  const [
+    copyStatus,
+    setCopyStatus,
+  ] = useState("");
+
+  const textareaRef =
+    useRef(null);
+
+  const recognitionRef =
+    useRef(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        QUIZ_HISTORY_KEY,
+        JSON.stringify(
+          quizHistory
+        )
+      );
+    } catch {
+      // Ignore localStorage errors.
+    }
   }, [quizHistory]);
 
+  const latestAssistant =
+    useMemo(
+      () =>
+        [...messages]
+          .reverse()
+          .find(
+            (message) =>
+              message.role ===
+              "assistant"
+          ),
+      [messages]
+    );
+
+  const analytics =
+    useMemo(() => {
+      const attempts =
+        quizHistory.length;
+
+      const questionsPracticed =
+        quizHistory.reduce(
+          (
+            sum,
+            item
+          ) =>
+            sum +
+            Number(
+              item.total || 0
+            ),
+          0
+        );
+
+      const correct =
+        quizHistory.reduce(
+          (
+            sum,
+            item
+          ) =>
+            sum +
+            Number(
+              item.score || 0
+            ),
+          0
+        );
+
+      const average =
+        attempts > 0
+          ? Math.round(
+              quizHistory.reduce(
+                (
+                  sum,
+                  item
+                ) =>
+                  sum +
+                  Number(
+                    item.percentage ||
+                      0
+                  ),
+                0
+              ) / attempts
+            )
+          : 0;
+
+      const best =
+        attempts > 0
+          ? Math.max(
+              ...quizHistory.map(
+                (item) =>
+                  Number(
+                    item.percentage ||
+                      0
+                  )
+              )
+            )
+          : 0;
+
+      return {
+        attempts,
+        questionsPracticed,
+        correct,
+        average,
+        best,
+      };
+    }, [quizHistory]);
+
   const closeModal = () => {
+    if (quizLoading) {
+      return;
+    }
+
     setModal(null);
     setTranslation("");
   };
 
-  const loadConversation = async (id) => {
-    if (!id) return;
+  /* =========================================================
+     LOAD CONVERSATION
+  ========================================================= */
 
-    try {
-      setLoadingConversation(true);
-      setError("");
+  const loadConversation =
+    async (id) => {
+      if (!id) return;
 
-      const response = await API.get(`/chat/${id}`);
-      const conversation = response.data?.conversation;
+      try {
+        setLoadingConversation(true);
+        setError("");
 
-      if (!conversation) {
-        throw new Error("Conversation was not found.");
+        const response =
+          await API.get(
+            `/chat/${id}`
+          );
+
+        const conversation =
+          response.data
+            ?.conversation;
+
+        if (!conversation) {
+          throw new Error(
+            "Conversation was not found."
+          );
+        }
+
+        setConversationId(
+          conversation._id
+        );
+
+        setMessages(
+          conversation.messages ||
+            []
+        );
+      } catch (err) {
+        console.error(
+          "Load Learn Conversation Error:",
+          err
+        );
+
+        setError(
+          err.response?.data
+            ?.message ||
+            "Failed to load learning conversation."
+        );
+      } finally {
+        setLoadingConversation(
+          false
+        );
       }
-
-      setConversationId(conversation._id);
-      setMessages(conversation.messages || []);
-    } catch (err) {
-      console.error("Load Learn Conversation Error:", err);
-      setError(
-        err.response?.data?.message ||
-          "Failed to load learning conversation."
-      );
-    } finally {
-      setLoadingConversation(false);
-    }
-  };
+    };
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get("conversation");
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const id =
+      params.get(
+        "conversation"
+      );
 
     if (id) {
       loadConversation(id);
     }
   }, []);
 
-  const createLearnConversation = async () => {
-    try {
-      const response = await API.post("/chat", {
-        type: "learn",
-      });
+  /* =========================================================
+     CREATE CONVERSATION
+  ========================================================= */
 
-      const conversation = response.data?.conversation;
+  const createLearnConversation =
+    async () => {
+      try {
+        const response =
+          await API.post(
+            "/chat",
+            {
+              type: "learn",
+            }
+          );
+
+        const conversation =
+          response.data
+            ?.conversation;
+
+        if (!conversation) {
+          throw new Error(
+            "Failed to create learning conversation."
+          );
+        }
+
+        setConversationId(
+          conversation._id
+        );
+
+        window.history.replaceState(
+          {},
+          "",
+          `/learn?conversation=${conversation._id}`
+        );
+
+        return conversation;
+      } catch (err) {
+        console.error(
+          "Create Learn Conversation Error:",
+          err
+        );
+
+        setError(
+          err.response?.data
+            ?.message ||
+            "Failed to create learning chat."
+        );
+
+        return null;
+      }
+    };
+
+  const newLearningChat =
+    async () => {
+      const conversation =
+        await createLearnConversation();
 
       if (!conversation) {
-        throw new Error("Failed to create learning conversation.");
+        return;
       }
 
-      setConversationId(conversation._id);
-      window.history.replaceState(
-        {},
-        "",
-        `/learn?conversation=${conversation._id}`
+      setMessages([]);
+      setTopic("");
+
+      setQuiz(null);
+      setQuizAnswers([]);
+      setQuizSubmitted(false);
+      setQuizScore(null);
+
+      setSelectedHistory(null);
+
+      setModal(null);
+
+      window.dispatchEvent(
+        new Event(
+          "paperpal-chat-updated"
+        )
       );
+    };
 
-      return conversation;
-    } catch (err) {
-      console.error("Create Learn Conversation Error:", err);
-      setError(
-        err.response?.data?.message ||
-          "Failed to create learning chat."
-      );
-      return null;
-    }
-  };
+  /* =========================================================
+     FIRST PROMPT
+  ========================================================= */
 
-  const newLearningChat = async () => {
-    await createLearnConversation();
-    setMessages([]);
-    setTopic("");
-    setQuiz(null);
-    setQuizAnswers([]);
-    setQuizSubmitted(false);
-    setQuizScore(null);
-    closeModal();
-
-    window.dispatchEvent(new Event("paperpal-chat-updated"));
-  };
-
-  const buildFirstPrompt = (selectedTopic) => `
+  const buildFirstPrompt =
+    (selectedTopic) => `
 Teach me "${selectedTopic}" as a ${level} learner.
 
 Language preference: ${language}.
@@ -256,416 +624,820 @@ First:
 Remember that I want to continue asking follow-up questions in this same conversation.
 `;
 
-  const sendMessage = async () => {
-    const text = topic.trim();
+  /* =========================================================
+     SEND MESSAGE
+  ========================================================= */
 
-    if (!text || loading) return;
+  const sendMessage =
+    async () => {
+      const text =
+        topic.trim();
 
-    try {
-      setLoading(true);
-      setError("");
-
-      let activeId = conversationId;
-
-      if (!activeId) {
-        const conversation = await createLearnConversation();
-
-        if (!conversation) return;
-
-        activeId = conversation._id;
-      }
-
-      const isFirstMessage = messages.length === 0;
-      const finalMessage = isFirstMessage
-        ? buildFirstPrompt(text)
-        : text;
-
-      const temporaryUserMessage = {
-        _id: `temporary-${Date.now()}`,
-        role: "user",
-        content: text,
-        createdAt: new Date().toISOString(),
-      };
-
-      setMessages((prev) => [...prev, temporaryUserMessage]);
-      setTopic("");
-
-      const response = await API.post(
-        `/chat/${activeId}/message`,
-        {
-          message: finalMessage,
-        }
-      );
-
-      const conversation = response.data?.conversation;
-
-      if (conversation) {
-        setMessages(conversation.messages || []);
-        setConversationId(conversation._id);
-
-        window.history.replaceState(
-          {},
-          "",
-          `/learn?conversation=${conversation._id}`
-        );
-      }
-
-      window.dispatchEvent(new Event("paperpal-chat-updated"));
-    } catch (err) {
-      console.error("Learn Message Error:", err);
-      setError(
-        err.response?.data?.message ||
-          "Failed to continue the lesson."
-      );
-
-      setMessages((prev) =>
-        prev.filter(
-          (message) =>
-            !String(message._id).startsWith("temporary-")
-        )
-      );
-    } finally {
-      setLoading(false);
-      textareaRef.current?.focus();
-    }
-  };
-
-  const handleKeyDown = (event) => {
-    if (
-      event.key === "Enter" &&
-      !event.shiftKey
-    ) {
-      event.preventDefault();
-      sendMessage();
-    }
-  };
-
-  const speakText = (text) => {
-    if (!text || !("speechSynthesis" in window)) {
-      setError("Voice reading is not supported by this browser.");
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-
-    const utterance =
-      new SpeechSynthesisUtterance(text);
-
-    utterance.lang =
-      speechLanguages[language] || "en-US";
-    utterance.rate = 0.95;
-    utterance.pitch = 1;
-    utterance.volume = 1;
-
-    utterance.onstart = () => setSpeaking(true);
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
-
-    window.speechSynthesis.speak(utterance);
-  };
-
-  const stopSpeaking = () => {
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-    setSpeaking(false);
-  };
-
-  const startVoiceInput = () => {
-    const SpeechRecognition =
-      window.SpeechRecognition ||
-      window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      setError(
-        "Voice input is not supported in this browser. Try Chrome or Edge."
-      );
-      return;
-    }
-
-    if (voiceListening) {
-      recognitionRef.current?.stop();
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
-
-    recognition.lang =
-      speechLanguages[language] || "en-US";
-    recognition.continuous = false;
-    recognition.interimResults = true;
-
-    recognition.onstart = () => {
-      setVoiceListening(true);
-      setError("");
-    };
-
-    recognition.onresult = (event) => {
-      let transcript = "";
-
-      for (
-        let i = event.resultIndex;
-        i < event.results.length;
-        i += 1
+      if (
+        !text ||
+        loading
       ) {
-        transcript += event.results[i][0].transcript;
+        return;
       }
 
-      setTopic(transcript);
+      try {
+        setLoading(true);
+        setError("");
 
-      requestAnimationFrame(() => {
+        let activeId =
+          conversationId;
+
+        if (!activeId) {
+          const conversation =
+            await createLearnConversation();
+
+          if (!conversation) {
+            return;
+          }
+
+          activeId =
+            conversation._id;
+        }
+
+        const isFirstMessage =
+          messages.length === 0;
+
+        const finalMessage =
+          isFirstMessage
+            ? buildFirstPrompt(
+                text
+              )
+            : text;
+
+        const temporaryUserMessage =
+          {
+            _id: `temporary-${Date.now()}`,
+            role: "user",
+            content: text,
+            createdAt:
+              new Date().toISOString(),
+          };
+
+        setMessages(
+          (prev) => [
+            ...prev,
+            temporaryUserMessage,
+          ]
+        );
+
+        setTopic("");
+
+        const response =
+          await API.post(
+            `/chat/${activeId}/message`,
+            {
+              message:
+                finalMessage,
+            }
+          );
+
+        const conversation =
+          response.data
+            ?.conversation;
+
+        if (conversation) {
+          setMessages(
+            conversation.messages ||
+              []
+          );
+
+          setConversationId(
+            conversation._id
+          );
+
+          window.history.replaceState(
+            {},
+            "",
+            `/learn?conversation=${conversation._id}`
+          );
+        }
+
+        window.dispatchEvent(
+          new Event(
+            "paperpal-chat-updated"
+          )
+        );
+      } catch (err) {
+        console.error(
+          "Learn Message Error:",
+          err
+        );
+
+        setError(
+          err.response?.data
+            ?.message ||
+            "Failed to continue the lesson."
+        );
+
+        setMessages(
+          (prev) =>
+            prev.filter(
+              (message) =>
+                !String(
+                  message._id
+                ).startsWith(
+                  "temporary-"
+                )
+            )
+        );
+      } finally {
+        setLoading(false);
         textareaRef.current?.focus();
-      });
+      }
     };
 
-    recognition.onerror = (event) => {
-      console.error("Voice input error:", event);
-      setError(
-        event.error === "not-allowed"
-          ? "Microphone permission was blocked."
-          : "Voice input could not be started."
-      );
-      setVoiceListening(false);
+  const handleKeyDown =
+    (event) => {
+      if (
+        event.key ===
+          "Enter" &&
+        !event.shiftKey
+      ) {
+        event.preventDefault();
+        sendMessage();
+      }
     };
 
-    recognition.onend = () => {
-      setVoiceListening(false);
-      recognitionRef.current = null;
+  /* =========================================================
+     SPEECH
+  ========================================================= */
+
+  const speakText =
+    (text) => {
+      if (
+        !text ||
+        !(
+          "speechSynthesis" in
+          window
+        )
+      ) {
+        setError(
+          "Voice reading is not supported by this browser."
+        );
+
+        return;
+      }
+
+      window.speechSynthesis.cancel();
+
+      const utterance =
+        new SpeechSynthesisUtterance(
+          text
+        );
+
+      utterance.lang =
+        speechLanguages[
+          language
+        ] || "en-US";
+
+      utterance.rate = 0.95;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+
+      utterance.onstart =
+        () =>
+          setSpeaking(true);
+
+      utterance.onend =
+        () =>
+          setSpeaking(false);
+
+      utterance.onerror =
+        () =>
+          setSpeaking(false);
+
+      window.speechSynthesis.speak(
+        utterance
+      );
     };
 
-    recognition.start();
-  };
+  const stopSpeaking =
+    () => {
+      if (
+        "speechSynthesis" in
+        window
+      ) {
+        window.speechSynthesis.cancel();
+      }
 
-  const copyMessage = async (text) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopyStatus("Copied");
-      window.setTimeout(() => setCopyStatus(""), 1400);
-    } catch {
-      setError("Could not copy the response.");
-    }
-  };
+      setSpeaking(false);
+    };
 
-  const openTranslate = (message) => {
-    setTranslation("");
-    setModal({
-      type: "translate",
-      message,
-    });
-  };
+  /* =========================================================
+     VOICE INPUT
+  ========================================================= */
 
-  const translateMessage = async () => {
-    if (!modal?.message?.content) return;
+  const startVoiceInput =
+    () => {
+      const SpeechRecognition =
+        window.SpeechRecognition ||
+        window.webkitSpeechRecognition;
 
-    try {
-      setTranslating(true);
-      setError("");
+      if (!SpeechRecognition) {
+        setError(
+          "Voice input is not supported in this browser. Try Chrome or Edge."
+        );
 
-      const result = await API.post(
-        "/ai/translate",
-        {
-          text: modal.message.content,
-          language: translateLanguage,
-        }
-      );
+        return;
+      }
 
-      setTranslation(result.data?.translatedText || "");
-    } catch (err) {
-      console.error("Translation Error:", err);
-      setError(
-        err.response?.data?.message ||
-          "Translation failed."
-      );
-    } finally {
-      setTranslating(false);
-    }
-  };
+      if (voiceListening) {
+        recognitionRef.current?.stop();
+        return;
+      }
 
-  const openQuiz = (prefill = "") => {
-    setQuizTopic(
-      prefill ||
-        topic.trim() ||
-        latestAssistant?.content?.split("\n")[0] ||
-        quickTopics[0]
-    );
-    setQuizLevel(level);
-    setModal({ type: "quiz" });
-  };
+      const recognition =
+        new SpeechRecognition();
 
-  const startQuiz = async () => {
-    const selectedTopic =
-      quizTopic.trim() || quickTopics[0];
+      recognitionRef.current =
+        recognition;
 
-    try {
-      setQuizLoading(true);
-      setError("");
+      recognition.lang =
+        speechLanguages[
+          language
+        ] || "en-US";
 
-      const response = await API.post(
-        "/ai/quiz",
-        {
-          topic: selectedTopic,
-          level: quizLevel,
-          language,
-          count: Number(quizCount),
-        }
-      );
+      recognition.continuous =
+        false;
 
-      const generated =
-        response.data?.quiz ||
-        response.data;
+      recognition.interimResults =
+        true;
 
-      const questions =
-        generated?.questions || [];
+      recognition.onstart =
+        () => {
+          setVoiceListening(true);
+          setError("");
+        };
 
-      if (!questions.length) {
-        throw new Error(
-          "No quiz questions were generated."
+      recognition.onresult =
+        (event) => {
+          let transcript = "";
+
+          for (
+            let i =
+              event.resultIndex;
+            i <
+            event.results.length;
+            i += 1
+          ) {
+            transcript +=
+              event.results[i][0]
+                .transcript;
+          }
+
+          setTopic(
+            transcript
+          );
+
+          requestAnimationFrame(
+            () => {
+              textareaRef.current?.focus();
+            }
+          );
+        };
+
+      recognition.onerror =
+        (event) => {
+          console.error(
+            "Voice input error:",
+            event
+          );
+
+          setError(
+            event.error ===
+              "not-allowed"
+              ? "Microphone permission was blocked."
+              : "Voice input could not be started."
+          );
+
+          setVoiceListening(
+            false
+          );
+        };
+
+      recognition.onend =
+        () => {
+          setVoiceListening(
+            false
+          );
+
+          recognitionRef.current =
+            null;
+        };
+
+      recognition.start();
+    };
+
+  /* =========================================================
+     COPY
+  ========================================================= */
+
+  const copyMessage =
+    async (text) => {
+      try {
+        await navigator.clipboard.writeText(
+          text
+        );
+
+        setCopyStatus(
+          "Copied"
+        );
+
+        window.setTimeout(
+          () =>
+            setCopyStatus(""),
+          1400
+        );
+      } catch {
+        setError(
+          "Could not copy the response."
         );
       }
+    };
 
-      setQuiz({
-        questions,
+  /* =========================================================
+     TRANSLATE
+  ========================================================= */
+
+  const openTranslate =
+    (message) => {
+      setTranslation("");
+
+      setModal({
+        type: "translate",
+        message,
       });
-      setQuizAnswers(
-        Array(questions.length).fill(null)
+    };
+
+  const translateMessage =
+    async () => {
+      if (
+        !modal?.message
+          ?.content
+      ) {
+        return;
+      }
+
+      try {
+        setTranslating(true);
+        setError("");
+
+        const result =
+          await API.post(
+            "/ai/translate",
+            {
+              text:
+                modal.message
+                  .content,
+              language:
+                translateLanguage,
+            }
+          );
+
+        setTranslation(
+          result.data
+            ?.translatedText ||
+            ""
+        );
+      } catch (err) {
+        console.error(
+          "Translation Error:",
+          err
+        );
+
+        setError(
+          err.response?.data
+            ?.message ||
+            "Translation failed."
+        );
+      } finally {
+        setTranslating(
+          false
+        );
+      }
+    };
+
+  /* =========================================================
+     OPEN QUIZ
+  ========================================================= */
+
+  const openQuiz =
+    (prefill = "") => {
+      const suggested =
+        String(
+          prefill ||
+            topic.trim() ||
+            latestAssistant
+              ?.content ||
+            quickTopics[0]
+        )
+          .replace(
+            /\s+/g,
+            " "
+          )
+          .trim();
+
+      setQuizTopic(
+        suggested
+          .slice(0, 150)
       );
+
+      setQuizLevel(
+        level
+      );
+
+      /*
+        Reset previous quiz state
+        so the setup always opens.
+      */
+      setQuiz(null);
+      setQuizAnswers([]);
       setQuizSubmitted(false);
       setQuizScore(null);
-      setQuizTopic(selectedTopic);
-      setModal({ type: "quiz" });
-    } catch (err) {
-      console.error("Quiz Generation Error:", err);
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          "Failed to generate quiz."
-      );
-    } finally {
-      setQuizLoading(false);
-    }
-  };
 
-  const selectQuizAnswer = (
-    questionIndex,
-    optionIndex
-  ) => {
-    if (quizSubmitted) return;
+      setError("");
 
-    setQuizAnswers((prev) => {
-      const next = [...prev];
-      next[questionIndex] = optionIndex;
-      return next;
-    });
-  };
-
-  const submitQuiz = () => {
-    if (!quiz?.questions?.length) return;
-
-    if (
-      quizAnswers.some(
-        (answer) => answer === null
-      )
-    ) {
-      setError(
-        "Please answer all quiz questions before submitting."
-      );
-      return;
-    }
-
-    let score = 0;
-
-    quiz.questions.forEach(
-      (question, index) => {
-        if (
-          Number(question.correctAnswer) ===
-          Number(quizAnswers[index])
-        ) {
-          score += 1;
-        }
-      }
-    );
-
-    const result = {
-      id: `quiz-${Date.now()}`,
-      topic: quizTopic,
-      level: quizLevel,
-      language,
-      questions: quiz.questions,
-      answers: quizAnswers,
-      score,
-      total: quiz.questions.length,
-      percentage: Math.round(
-        (score / quiz.questions.length) * 100
-      ),
-      createdAt: new Date().toISOString(),
+      setModal({
+        type: "quiz",
+      });
     };
 
-    setQuizScore(result);
-    setQuizSubmitted(true);
-    setQuizHistory((prev) => [result, ...prev]);
-    window.dispatchEvent(
-      new Event("paperpal-learn-progress-updated")
-    );
-  };
+  /* =========================================================
+     START QUIZ
+  ========================================================= */
 
-  const resetQuiz = () => {
-    setQuiz(null);
-    setQuizAnswers([]);
-    setQuizSubmitted(false);
-    setQuizScore(null);
-  };
+  const startQuiz =
+    async () => {
+      const selectedTopic =
+        quizTopic.trim();
 
-  const openHistory = () => {
-    setSelectedHistory(null);
-    setModal({ type: "history" });
-  };
+      if (!selectedTopic) {
+        setError(
+          "Please enter a quiz topic."
+        );
 
-  const openAnalytics = () => {
-    setModal({ type: "analytics" });
-  };
+        return;
+      }
+
+      try {
+        setQuizLoading(true);
+        setError("");
+
+        const response =
+          await API.post(
+            "/ai/quiz",
+            {
+              topic:
+                selectedTopic,
+              level:
+                quizLevel,
+              language,
+              count:
+                Number(
+                  quizCount
+                ),
+            }
+          );
+
+        const generated =
+          response.data?.quiz ||
+          response.data;
+
+        const questions =
+          normalizeQuizQuestions(
+            generated?.questions ||
+              []
+          );
+
+        if (
+          !questions.length
+        ) {
+          throw new Error(
+            "No quiz questions were generated."
+          );
+        }
+
+        if (
+          questions.length !==
+          Number(
+            quizCount
+          )
+        ) {
+          console.warn(
+            "AI returned a different number of questions:",
+            questions.length
+          );
+        }
+
+        const invalid =
+          questions.find(
+            (question) =>
+              question.options
+                .length !==
+                4 ||
+              question.correctAnswer ===
+                null
+          );
+
+        if (invalid) {
+          throw new Error(
+            "The AI returned an invalid quiz answer key. Please generate the quiz again."
+          );
+        }
+
+        setQuiz({
+          questions,
+        });
+
+        setQuizAnswers(
+          Array(
+            questions.length
+          ).fill(null)
+        );
+
+        setQuizSubmitted(
+          false
+        );
+
+        setQuizScore(null);
+
+        setModal({
+          type: "quiz",
+        });
+      } catch (err) {
+        console.error(
+          "Quiz Generation Error:",
+          err
+        );
+
+        setError(
+          err.response?.data
+            ?.message ||
+            err.message ||
+            "Failed to generate quiz."
+        );
+      } finally {
+        setQuizLoading(
+          false
+        );
+      }
+    };
+
+  /* =========================================================
+     SELECT ANSWER
+  ========================================================= */
+
+  const selectQuizAnswer =
+    (
+      questionIndex,
+      optionIndex
+    ) => {
+      if (
+        quizSubmitted
+      ) {
+        return;
+      }
+
+      setQuizAnswers(
+        (prev) => {
+          const next = [
+            ...prev,
+          ];
+
+          next[
+            questionIndex
+          ] =
+            optionIndex;
+
+          return next;
+        }
+      );
+    };
+
+  /* =========================================================
+     SUBMIT QUIZ
+  ========================================================= */
+
+  const submitQuiz =
+    () => {
+      if (
+        !quiz?.questions
+          ?.length
+      ) {
+        return;
+      }
+
+      const unanswered =
+        quizAnswers.some(
+          (answer) =>
+            answer === null ||
+            answer === undefined
+        );
+
+      if (unanswered) {
+        setError(
+          "Please answer all quiz questions before submitting."
+        );
+
+        return;
+      }
+
+      let score = 0;
+
+      const questionResults =
+        quiz.questions.map(
+          (
+            question,
+            index
+          ) => {
+            const selectedAnswer =
+              Number(
+                quizAnswers[
+                  index
+                ]
+              );
+
+            const correctAnswer =
+              Number(
+                question.correctAnswer
+              );
+
+            const isCorrect =
+              selectedAnswer ===
+              correctAnswer;
+
+            if (isCorrect) {
+              score += 1;
+            }
+
+            return {
+              ...question,
+              selectedAnswer,
+              isCorrect,
+            };
+          }
+        );
+
+      const total =
+        questionResults.length;
+
+      const percentage =
+        total > 0
+          ? Math.round(
+              (score /
+                total) *
+                100
+            )
+          : 0;
+
+      const result = {
+        id: `quiz-${Date.now()}`,
+        topic:
+          quizTopic.trim(),
+        level:
+          quizLevel,
+        language,
+
+        questions:
+          questionResults,
+
+        answers:
+          [...quizAnswers],
+
+        score,
+        total,
+        percentage,
+
+        createdAt:
+          new Date().toISOString(),
+      };
+
+      setQuizScore(
+        result
+      );
+
+      setQuizSubmitted(
+        true
+      );
+
+      setQuizHistory(
+        (prev) => [
+          result,
+          ...prev,
+        ]
+      );
+
+      setError("");
+
+      window.dispatchEvent(
+        new Event(
+          "paperpal-learn-progress-updated"
+        )
+      );
+    };
+
+  /* =========================================================
+     RESET QUIZ
+  ========================================================= */
+
+  const resetQuiz =
+    () => {
+      setQuiz(null);
+      setQuizAnswers([]);
+      setQuizSubmitted(false);
+      setQuizScore(null);
+    };
+
+  /* =========================================================
+     HISTORY
+  ========================================================= */
+
+  const openHistory =
+    () => {
+      setSelectedHistory(null);
+
+      setModal({
+        type: "history",
+      });
+    };
+
+  const openAnalytics =
+    () => {
+      setModal({
+        type: "analytics",
+      });
+    };
 
   const progress =
     analytics.attempts > 0
       ? analytics.average
       : 0;
 
+  /* =========================================================
+     RENDER
+  ========================================================= */
+
   return (
     <Layout>
       <div className="learn-page">
         <div className="learn-shell">
+
+          {/* =================================================
+              HERO
+          ================================================= */}
+
           <section className="learn-hero">
+
             <div className="hero-brand-icon">
               <BookOpen size={28} />
             </div>
 
             <div className="hero-copy">
+
               <div className="hero-kicker">
                 <Sparkles size={12} />
                 PAPERPAL LEARN
               </div>
 
               <h1>
-                Learn <span>Anything</span>, your way.
+                Learn{" "}
+                <span>
+                  Anything
+                </span>
+                , your way.
               </h1>
 
               <p>
-                Learn through conversation, practice with
-                quizzes, and build real understanding.
+                Learn through
+                conversation, practice
+                with quizzes, and build
+                real understanding.
               </p>
+
             </div>
 
-            <div className="hero-robot" aria-hidden="true">
+            <div
+              className="hero-robot"
+              aria-hidden="true"
+            >
               <div className="robot-aura" />
+
               <div className="robot-body">
                 <span className="robot-eye" />
                 <span className="robot-eye" />
                 <div className="robot-antenna" />
               </div>
+
               <Sparkles
                 size={14}
                 className="robot-spark spark-a"
               />
+
               <Sparkles
                 size={12}
                 className="robot-spark spark-b"
@@ -673,307 +1445,500 @@ Remember that I want to continue asking follow-up questions in this same convers
             </div>
 
             <button
+              type="button"
               className="new-chat-btn"
-              onClick={newLearningChat}
+              onClick={
+                newLearningChat
+              }
             >
               <Plus size={16} />
               New Learning Chat
             </button>
+
           </section>
+
+          {/* =================================================
+              ERROR
+          ================================================= */}
 
           {error && (
             <div className="learn-error">
-              <span>{error}</span>
-              <button onClick={() => setError("")}>
+
+              <span>
+                {error}
+              </span>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setError("")
+                }
+              >
                 <X size={15} />
               </button>
+
             </div>
           )}
 
+          {/* =================================================
+              TOOLBAR
+          ================================================= */}
+
           <section className="learning-toolbar">
+
             <div className="toolbar-select">
-              <label>Learning Level</label>
+
+              <label>
+                Learning Level
+              </label>
+
               <select
                 value={level}
                 onChange={(event) =>
-                  setLevel(event.target.value)
+                  setLevel(
+                    event.target.value
+                  )
                 }
               >
-                <option>Beginner</option>
-                <option>Intermediate</option>
-                <option>Advanced</option>
+                <option>
+                  Beginner
+                </option>
+
+                <option>
+                  Intermediate
+                </option>
+
+                <option>
+                  Advanced
+                </option>
               </select>
+
             </div>
 
             <div className="toolbar-select">
-              <label>Response Language</label>
+
+              <label>
+                Response Language
+              </label>
+
               <select
                 value={language}
                 onChange={(event) =>
-                  setLanguage(event.target.value)
+                  setLanguage(
+                    event.target.value
+                  )
                 }
               >
-                <option>English</option>
-                <option>Telugu</option>
-                <option>Hindi</option>
-                <option>Tamil</option>
-                <option>Kannada</option>
+                <option>
+                  English
+                </option>
+
+                <option>
+                  Telugu
+                </option>
+
+                <option>
+                  Hindi
+                </option>
+
+                <option>
+                  Tamil
+                </option>
+
+                <option>
+                  Kannada
+                </option>
               </select>
+
             </div>
 
             <div className="toolbar-divider" />
 
             <div className="toolbar-tip">
               <Brain size={15} />
-              PaperPal adapts explanations to your level.
+
+              PaperPal adapts
+              explanations to your
+              level.
             </div>
+
           </section>
 
+          {/* =================================================
+              QUICK TOPICS
+          ================================================= */}
+
           <section className="quick-topics-bar">
+
             <span className="quick-label">
               <Lightbulb size={14} />
               Try learning about
             </span>
 
-            {quickTopics.map((item) => (
-              <button
-                key={item}
-                onClick={() => {
-                  setTopic(item);
-                  textareaRef.current?.focus();
-                }}
-              >
-                {item}
-              </button>
-            ))}
+            {quickTopics.map(
+              (item) => (
+                <button
+                  type="button"
+                  key={item}
+                  onClick={() => {
+                    setTopic(
+                      item
+                    );
+
+                    textareaRef.current?.focus();
+                  }}
+                >
+                  {item}
+                </button>
+              )
+            )}
+
           </section>
 
+          {/* =================================================
+              MAIN LAYOUT
+          ================================================= */}
+
           <div className="learn-layout">
+
             <section className="conversation-card">
+
               <div className="conversation-head">
+
                 <div className="conversation-title-wrap">
+
                   <div className="conversation-badge">
                     <BookOpen size={16} />
                   </div>
+
                   <div>
-                    <strong>Learning Conversation</strong>
+
+                    <strong>
+                      Learning Conversation
+                    </strong>
+
                     <span>
-                      Ask, follow up, and keep the context.
+                      Ask, follow up, and
+                      keep the context.
                     </span>
+
                   </div>
+
                 </div>
 
                 {speaking && (
                   <button
+                    type="button"
                     className="stop-reading"
-                    onClick={stopSpeaking}
+                    onClick={
+                      stopSpeaking
+                    }
                   >
                     <VolumeX size={14} />
                     Stop reading
                   </button>
                 )}
+
               </div>
 
               <div className="message-scroll">
+
                 {loadingConversation ? (
                   <div className="empty-learn">
+
                     <div className="thinking-card">
+
                       <RunnerLoader
                         title="Getting your learning space ready…"
                         subtitle="Connecting your previous conversation"
                       />
+
                     </div>
+
                   </div>
-                ) : messages.length === 0 ? (
+                ) : messages.length ===
+                  0 ? (
+
                   <div className="empty-learn">
+
                     <div className="empty-orb">
                       <Sparkles size={30} />
                     </div>
 
-                    <h2>What do you want to learn?</h2>
+                    <h2>
+                      What do you want
+                      to learn?
+                    </h2>
 
                     <p>
-                      Start with a topic, ask a doubt, or
-                      speak your question. PaperPal will
-                      explain it step by step.
+                      Start with a topic,
+                      ask a doubt, or speak
+                      your question. PaperPal
+                      will explain it step by
+                      step.
                     </p>
 
                     <div className="empty-features">
+
                       <span>
                         <Target size={13} />
                         Step-by-step
                       </span>
+
                       <span>
                         <History size={13} />
                         Conversation memory
                       </span>
+
                       <span>
                         <Trophy size={13} />
                         Practice quizzes
                       </span>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {messages.map((message) => (
-                      <div
-                        key={message._id}
-                        className={`message-row ${message.role}`}
-                      >
-                        <div
-                          className={`avatar ${message.role}`}
-                        >
-                          {message.role ===
-                          "assistant" ? (
-                            <Sparkles size={14} />
-                          ) : (
-                            <User size={14} />
-                          )}
-                        </div>
 
-                        <div className="message-content-wrap">
-                          <div className="message-meta">
-                            <strong>
-                              {message.role ===
-                              "assistant"
-                                ? "PaperPal AI"
-                                : "You"}
-                            </strong>
-                            <time>
-                              {message.createdAt
-                                ? new Date(
-                                    message.createdAt
-                                  ).toLocaleTimeString(
-                                    [],
-                                    {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    }
-                                  )
-                                : ""}
-                            </time>
-                          </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="empty-start"
+                      onClick={() =>
+                        textareaRef.current?.focus()
+                      }
+                    >
+                      Start learning
+                      <ChevronRight size={13} />
+                    </button>
+
+                  </div>
+
+                ) : (
+
+                  <>
+                    {messages.map(
+                      (message) => (
+                        <div
+                          key={
+                            message._id
+                          }
+                          className={`message-row ${
+                            message.role
+                          }`}
+                        >
 
                           <div
-                            className={`message-bubble ${message.role}`}
+                            className={`avatar ${
+                              message.role ===
+                              "assistant"
+                                ? "ai"
+                                : "user"
+                            }`}
                           >
-                            {message.content}
+                            {message.role ===
+                            "assistant" ? (
+                              <Sparkles
+                                size={14}
+                              />
+                            ) : (
+                              <User
+                                size={14}
+                              />
+                            )}
                           </div>
 
-                          {message.role ===
-                            "assistant" && (
-                            <div className="message-toolbar">
-                              <button
-                                className="text-action"
-                                onClick={() =>
-                                  speakText(
-                                    message.content
-                                  )
-                                }
-                              >
-                                <Volume2 size={12} />
-                                Listen
-                              </button>
+                          <div className="message-content-wrap">
 
-                              <button
-                                className="text-action"
-                                onClick={() =>
-                                  openTranslate(
-                                    message
-                                  )
-                                }
-                              >
-                                <Languages size={12} />
-                                Translate
-                              </button>
+                            <div className="message-meta">
 
-                              <button
-                                className="text-action"
-                                onClick={() =>
-                                  copyMessage(
-                                    message.content
-                                  )
-                                }
-                              >
-                                <Copy size={12} />
-                                {copyStatus || "Copy"}
-                              </button>
+                              <strong>
+                                {message.role ===
+                                "assistant"
+                                  ? "PaperPal AI"
+                                  : "You"}
+                              </strong>
 
-                              <button
-                                className="quiz-mini-action"
-                                title="Create a quiz from this lesson"
-                                aria-label="Create quiz"
-                                onClick={() =>
-                                  openQuiz(
-                                    topic.trim()
-                                  )
-                                }
-                              >
-                                <Trophy size={13} />
-                              </button>
+                              <time>
+                                {message.createdAt
+                                  ? new Date(
+                                      message.createdAt
+                                    ).toLocaleTimeString(
+                                      [],
+                                      {
+                                        hour:
+                                          "2-digit",
+                                        minute:
+                                          "2-digit",
+                                      }
+                                    )
+                                  : ""}
+                              </time>
+
                             </div>
-                          )}
+
+                            <div
+                              className={`message-bubble ${
+                                message.role ===
+                                "assistant"
+                                  ? "ai"
+                                  : "user"
+                              }`}
+                            >
+                              {
+                                message.content
+                              }
+                            </div>
+
+                            {message.role ===
+                              "assistant" && (
+                              <div className="message-toolbar">
+
+                                <button
+                                  type="button"
+                                  className="text-action"
+                                  onClick={() =>
+                                    speakText(
+                                      message.content
+                                    )
+                                  }
+                                >
+                                  {speaking ? (
+                                    <VolumeX size={12} />
+                                  ) : (
+                                    <Volume2 size={12} />
+                                  )}
+                                  Listen
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="text-action"
+                                  onClick={() =>
+                                    openTranslate(
+                                      message
+                                    )
+                                  }
+                                >
+                                  <Languages size={12} />
+                                  Translate
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="text-action"
+                                  onClick={() =>
+                                    copyMessage(
+                                      message.content
+                                    )
+                                  }
+                                >
+                                  <Copy size={12} />
+                                  {copyStatus ||
+                                    "Copy"}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="quiz-mini-action"
+                                  title="Create a quiz from this lesson"
+                                  onClick={() =>
+                                    openQuiz(
+                                      message.content
+                                    )
+                                  }
+                                >
+                                  <Trophy size={13} />
+                                </button>
+
+                              </div>
+                            )}
+
+                          </div>
+
                         </div>
-                      </div>
-                    ))}
+                      )
+                    )}
 
                     {loading && (
                       <div className="message-row assistant">
+
                         <div className="avatar ai">
                           <Sparkles size={14} />
                         </div>
+
                         <div className="message-content-wrap">
+
                           <div className="message-meta">
-                            <strong>PaperPal AI</strong>
+                            <strong>
+                              PaperPal AI
+                            </strong>
                           </div>
+
                           <div className="thinking-card">
                             <RunnerLoader
                               title="Thinking like a tutor…"
                               subtitle="Building an explanation that fits your level"
                             />
                           </div>
+
                         </div>
+
                       </div>
                     )}
                   </>
                 )}
+
               </div>
 
+              {/* =================================================
+                  PROMPT
+              ================================================= */}
+
               <div className="prompt-area">
+
                 <div className="prompt-label">
                   <Sparkles size={12} />
                   Ask PaperPal
                 </div>
 
                 <div className="prompt-box">
+
                   <textarea
-                    ref={textareaRef}
-                    value={topic}
-                    onChange={(event) =>
-                      setTopic(event.target.value)
+                    ref={
+                      textareaRef
                     }
-                    onKeyDown={handleKeyDown}
+                    value={
+                      topic
+                    }
+                    onChange={(event) =>
+                      setTopic(
+                        event.target.value
+                      )
+                    }
+                    onKeyDown={
+                      handleKeyDown
+                    }
                     placeholder={
-                      messages.length === 0
+                      messages.length ===
+                      0
                         ? "Enter a topic, question, or doubt…"
                         : "Ask a follow-up question…"
                     }
                     rows={2}
-                    disabled={loading}
+                    disabled={
+                      loading
+                    }
                   />
 
                   <div className="prompt-tools">
+
                     <button
+                      type="button"
                       className={`prompt-icon ${
-                        voiceListening ? "active" : ""
-                      }`}
-                      onClick={startVoiceInput}
-                      title={
                         voiceListening
-                          ? "Stop voice input"
-                          : "Speak your question"
+                          ? "active"
+                          : ""
+                      }`}
+                      onClick={
+                        startVoiceInput
                       }
-                      aria-label="Voice input"
                     >
                       {voiceListening ? (
                         <MicOff size={18} />
@@ -983,13 +1948,15 @@ Remember that I want to continue asking follow-up questions in this same convers
                     </button>
 
                     <button
+                      type="button"
                       className="prompt-send"
-                      onClick={sendMessage}
-                      disabled={
-                        loading || !topic.trim()
+                      onClick={
+                        sendMessage
                       }
-                      title="Send"
-                      aria-label="Send"
+                      disabled={
+                        loading ||
+                        !topic.trim()
+                      }
                     >
                       {loading ? (
                         <Loader2
@@ -1000,47 +1967,76 @@ Remember that I want to continue asking follow-up questions in this same convers
                         <Send size={18} />
                       )}
                     </button>
+
                   </div>
+
                 </div>
 
                 <div className="prompt-footer">
+
                   <span>
-                    Enter to send · Shift + Enter for a new
-                    line
+                    Enter to send · Shift
+                    + Enter for a new line
                   </span>
+
                   <span>
                     {voiceListening
                       ? "Listening…"
                       : "🎙 Speak your question"}
                   </span>
+
                 </div>
+
               </div>
+
             </section>
 
+            {/* =================================================
+                RIGHT RAIL
+            ================================================= */}
+
             <aside className="right-rail">
+
               <section className="tool-card">
+
                 <div className="rail-title">
-                  <span>Learning Tools</span>
-                  <small>Choose when needed</small>
+                  <span>
+                    Learning Tools
+                  </span>
+
+                  <small>
+                    Choose when needed
+                  </small>
                 </div>
 
                 <div className="tool-grid">
+
                   <button
+                    type="button"
                     className="tool-tile quiz"
                     onClick={() =>
-                      openQuiz(topic.trim())
+                      openQuiz()
                     }
                   >
                     <span>
                       <Trophy size={17} />
                     </span>
-                    <strong>Quiz</strong>
-                    <small>Practice</small>
+
+                    <strong>
+                      Quiz
+                    </strong>
+
+                    <small>
+                      Practice
+                    </small>
                   </button>
 
                   <button
+                    type="button"
                     className="tool-tile translate"
-                    disabled={!latestAssistant}
+                    disabled={
+                      !latestAssistant
+                    }
                     onClick={() =>
                       latestAssistant &&
                       openTranslate(
@@ -1051,40 +2047,70 @@ Remember that I want to continue asking follow-up questions in this same convers
                     <span>
                       <Languages size={17} />
                     </span>
-                    <strong>Translate</strong>
-                    <small>Change language</small>
+
+                    <strong>
+                      Translate
+                    </strong>
+
+                    <small>
+                      Change language
+                    </small>
                   </button>
 
                   <button
+                    type="button"
                     className="tool-tile history"
-                    onClick={openHistory}
+                    onClick={
+                      openHistory
+                    }
                   >
                     <span>
                       <History size={17} />
                     </span>
-                    <strong>Quiz History</strong>
+
+                    <strong>
+                      Quiz History
+                    </strong>
+
                     <small>
                       {quizHistory.length} attempts
                     </small>
                   </button>
 
                   <button
+                    type="button"
                     className="tool-tile analytics"
-                    onClick={openAnalytics}
+                    onClick={
+                      openAnalytics
+                    }
                   >
                     <span>
                       <BarChart3 size={17} />
                     </span>
-                    <strong>Analytics</strong>
-                    <small>{analytics.average}% avg</small>
+
+                    <strong>
+                      Analytics
+                    </strong>
+
+                    <small>
+                      {analytics.average}% avg
+                    </small>
                   </button>
+
                 </div>
+
               </section>
 
               <section className="progress-card">
+
                 <div className="rail-title">
-                  <span>Learning Progress</span>
-                  <small>Quiz based</small>
+                  <span>
+                    Learning Progress
+                  </span>
+
+                  <small>
+                    Quiz based
+                  </small>
                 </div>
 
                 <div
@@ -1094,75 +2120,165 @@ Remember that I want to continue asking follow-up questions in this same convers
                   }}
                 >
                   <div>
-                    <strong>{progress}%</strong>
-                    <span>Average</span>
+                    <strong>
+                      {progress}%
+                    </strong>
+
+                    <span>
+                      Average
+                    </span>
                   </div>
                 </div>
 
                 <div className="progress-grid">
-                  <div>
-                    <strong>{analytics.attempts}</strong>
-                    <span>Attempts</span>
-                  </div>
+
                   <div>
                     <strong>
-                      {analytics.questionsPracticed}
+                      {
+                        analytics.attempts
+                      }
                     </strong>
-                    <span>Questions</span>
+
+                    <span>
+                      Attempts
+                    </span>
                   </div>
+
                   <div>
-                    <strong>{analytics.correct}</strong>
-                    <span>Correct</span>
+                    <strong>
+                      {
+                        analytics.questionsPracticed
+                      }
+                    </strong>
+
+                    <span>
+                      Questions
+                    </span>
                   </div>
+
+                  <div>
+                    <strong>
+                      {
+                        analytics.correct
+                      }
+                    </strong>
+
+                    <span>
+                      Correct
+                    </span>
+                  </div>
+
                 </div>
+
               </section>
 
               <section className="helper-card">
+
                 <div className="helper-graphic">
                   <Brain size={29} />
                   <Sparkles size={15} />
                 </div>
-                <strong>Learn smarter, not harder.</strong>
+
+                <strong>
+                  Learn smarter,
+                  not harder.
+                </strong>
+
                 <p>
-                  Ask follow-up questions. Use Listen when
-                  you prefer audio. Use Quiz when you're ready
-                  to test yourself.
+                  Ask follow-up questions.
+                  Use Listen when you prefer
+                  audio. Use Quiz when you're
+                  ready to test yourself.
                 </p>
+
                 <button
-                  onClick={() => textareaRef.current?.focus()}
+                  type="button"
+                  onClick={() =>
+                    textareaRef.current?.focus()
+                  }
                 >
-                  Start learning <ChevronRight size={13} />
+                  Start learning
+                  <ChevronRight
+                    size={13}
+                  />
                 </button>
+
               </section>
+
             </aside>
+
           </div>
 
-          {modal?.type === "quiz" && (
+          {/* =================================================
+              QUIZ MODAL
+          ================================================= */}
+
+          {modal?.type ===
+            "quiz" && (
             <QuizModal
               quiz={quiz}
-              quizAnswers={quizAnswers}
-              quizSubmitted={quizSubmitted}
-              quizScore={quizScore}
-              quizTopic={quizTopic}
-              quizLevel={quizLevel}
-              quizCount={quizCount}
-              quizLoading={quizLoading}
-              setQuizTopic={setQuizTopic}
-              setQuizLevel={setQuizLevel}
-              setQuizCount={setQuizCount}
-              onClose={closeModal}
-              onStart={startQuiz}
-              onAnswer={selectQuizAnswer}
-              onSubmit={submitQuiz}
-              onRetake={startQuiz}
-              onReset={resetQuiz}
+              quizAnswers={
+                quizAnswers
+              }
+              quizSubmitted={
+                quizSubmitted
+              }
+              quizScore={
+                quizScore
+              }
+              quizTopic={
+                quizTopic
+              }
+              quizLevel={
+                quizLevel
+              }
+              quizCount={
+                quizCount
+              }
+              quizLoading={
+                quizLoading
+              }
+              setQuizTopic={
+                setQuizTopic
+              }
+              setQuizLevel={
+                setQuizLevel
+              }
+              setQuizCount={
+                setQuizCount
+              }
+              onClose={
+                closeModal
+              }
+              onStart={
+                startQuiz
+              }
+              onAnswer={
+                selectQuizAnswer
+              }
+              onSubmit={
+                submitQuiz
+              }
+              onRetake={
+                startQuiz
+              }
+              onReset={
+                resetQuiz
+              }
             />
           )}
 
-          {modal?.type === "translate" && (
+          {/* =================================================
+              TRANSLATE MODAL
+          ================================================= */}
+
+          {modal?.type ===
+            "translate" && (
             <div
               className="modal-overlay"
-              onClick={closeModal}
+              onClick={
+                closeModal
+              }
             >
               <div
                 className="tool-modal"
@@ -1170,53 +2286,91 @@ Remember that I want to continue asking follow-up questions in this same convers
                   event.stopPropagation()
                 }
               >
+
                 <button
+                  type="button"
                   className="modal-close"
-                  onClick={closeModal}
-                  aria-label="Close"
+                  onClick={
+                    closeModal
+                  }
                 >
                   <X size={16} />
                 </button>
 
                 <div className="modal-heading-row">
+
                   <div>
                     <div className="eyebrow">
                       LANGUAGE TOOL
                     </div>
-                    <h2>Translate this lesson</h2>
+
+                    <h2>
+                      Translate this lesson
+                    </h2>
+
                     <p>
-                      Keep the original answer intact and
-                      create a translated reading copy.
+                      Keep the original answer
+                      intact and create a
+                      translated reading copy.
                     </p>
                   </div>
+
                   <div className="quiz-hero-icon">
                     <Languages size={23} />
                   </div>
+
                 </div>
 
                 <div className="translation-controls">
+
                   <div>
-                    <label>Target language</label>
+
+                    <label>
+                      Target language
+                    </label>
+
                     <select
-                      value={translateLanguage}
+                      value={
+                        translateLanguage
+                      }
                       onChange={(event) =>
                         setTranslateLanguage(
                           event.target.value
                         )
                       }
                     >
-                      <option>Telugu</option>
-                      <option>Hindi</option>
-                      <option>Tamil</option>
-                      <option>Kannada</option>
-                      <option>English</option>
+                      <option>
+                        Telugu
+                      </option>
+
+                      <option>
+                        Hindi
+                      </option>
+
+                      <option>
+                        Tamil
+                      </option>
+
+                      <option>
+                        Kannada
+                      </option>
+
+                      <option>
+                        English
+                      </option>
                     </select>
+
                   </div>
 
                   <button
+                    type="button"
                     className="primary-btn"
-                    onClick={translateMessage}
-                    disabled={translating}
+                    onClick={
+                      translateMessage
+                    }
+                    disabled={
+                      translating
+                    }
                   >
                     {translating ? (
                       <Loader2
@@ -1226,10 +2380,12 @@ Remember that I want to continue asking follow-up questions in this same convers
                     ) : (
                       <Languages size={14} />
                     )}
+
                     {translating
-                      ? "Translating…"
+                      ? "Translating..."
                       : "Translate"}
                   </button>
+
                 </div>
 
                 <div className="translation-text">
@@ -1239,208 +2395,50 @@ Remember that I want to continue asking follow-up questions in this same convers
 
                 {translation && (
                   <div className="modal-actions">
+
                     <button
+                      type="button"
                       className="secondary-btn"
                       onClick={() =>
-                        copyMessage(translation)
+                        copyMessage(
+                          translation
+                        )
                       }
                     >
                       <Copy size={14} />
                       Copy
                     </button>
+
                     <button
+                      type="button"
                       className="primary-btn"
                       onClick={() =>
-                        speakText(translation)
+                        speakText(
+                          translation
+                        )
                       }
                     >
                       <Volume2 size={14} />
                       Listen
                     </button>
+
                   </div>
                 )}
+
               </div>
             </div>
           )}
 
-          {modal?.type === "history" && (
+          {/* =================================================
+              HISTORY MODAL
+          ================================================= */}
+
+          {modal?.type ===
+            "history" && (
             <div
               className="modal-overlay"
-              onClick={closeModal}
-            >
-              <div
-                className="tool-modal wide"
-                onClick={(event) =>
-                  event.stopPropagation()
-                }
-              >
-                <button
-                  className="modal-close"
-                  onClick={closeModal}
-                >
-                  <X size={16} />
-                </button>
-
-                <div className="modal-heading-row">
-                  <div>
-                    <div className="eyebrow">
-                      PRACTICE
-                    </div>
-                    <h2>Quiz History</h2>
-                    <p>
-                      Review previous attempts and open a
-                      detailed answer analysis.
-                    </p>
-                  </div>
-                  <div className="quiz-hero-icon">
-                    <History size={23} />
-                  </div>
-                </div>
-
-                {quizHistory.length === 0 ? (
-                  <div className="empty-modal">
-                    <History size={34} />
-                    <strong>No quiz attempts yet</strong>
-                    <span>
-                      Complete a quiz and it will appear here.
-                    </span>
-                  </div>
-                ) : (
-                  <div className="history-list">
-                    {quizHistory.map((item) => (
-                      <div
-                        key={item.id}
-                        className="history-item"
-                      >
-                        <div className="history-icon">
-                          <Trophy size={15} />
-                        </div>
-                        <div className="history-main">
-                          <strong>{item.topic}</strong>
-                          <span>
-                            {item.level} · {item.total}{" "}
-                            questions ·{" "}
-                            {new Date(
-                              item.createdAt
-                            ).toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="history-score">
-                          <strong>
-                            {item.percentage}%
-                          </strong>
-                          <span>
-                            {item.score}/{item.total}
-                          </span>
-                        </div>
-                        <button
-                          className="secondary-btn"
-                          onClick={() =>
-                            setSelectedHistory(item)
-                          }
-                        >
-                          <Eye size={13} />
-                          View
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {modal?.type === "analytics" && (
-            <div
-              className="modal-overlay"
-              onClick={closeModal}
-            >
-              <div
-                className="tool-modal"
-                onClick={(event) =>
-                  event.stopPropagation()
-                }
-              >
-                <button
-                  className="modal-close"
-                  onClick={closeModal}
-                >
-                  <X size={16} />
-                </button>
-
-                <div className="modal-heading-row">
-                  <div>
-                    <div className="eyebrow">
-                      PROGRESS
-                    </div>
-                    <h2>Learning Analytics</h2>
-                    <p>
-                      A quick view of how your practice is
-                      progressing.
-                    </p>
-                  </div>
-                  <div className="quiz-hero-icon">
-                    <BarChart3 size={23} />
-                  </div>
-                </div>
-
-                <div className="analytics-big">
-                  <div className="analytics-big-number">
-                    {analytics.average}%
-                  </div>
-                  <div>
-                    <strong>Average quiz score</strong>
-                    <span>
-                      Best score: {analytics.best}% ·{" "}
-                      {analytics.attempts} attempt
-                      {analytics.attempts === 1
-                        ? ""
-                        : "s"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="analytics-stat-grid">
-                  <div>
-                    <strong>{analytics.attempts}</strong>
-                    <span>Quiz attempts</span>
-                  </div>
-                  <div>
-                    <strong>
-                      {analytics.questionsPracticed}
-                    </strong>
-                    <span>Questions practiced</span>
-                  </div>
-                  <div>
-                    <strong>{analytics.correct}</strong>
-                    <span>Correct answers</span>
-                  </div>
-                  <div>
-                    <strong>{analytics.best}%</strong>
-                    <span>Best score</span>
-                  </div>
-                </div>
-
-                <div className="insight-box">
-                  <Lightbulb size={16} />
-                  <div>
-                    <strong>PaperPal insight</strong>
-                    <span>
-                      Keep using short quizzes after lessons.
-                      Repeated retrieval practice helps reveal
-                      which concepts need another explanation.
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {selectedHistory && (
-            <div
-              className="modal-overlay top-layer"
-              onClick={() =>
-                setSelectedHistory(null)
+              onClick={
+                closeModal
               }
             >
               <div
@@ -1449,74 +2447,441 @@ Remember that I want to continue asking follow-up questions in this same convers
                   event.stopPropagation()
                 }
               >
+
                 <button
+                  type="button"
                   className="modal-close"
-                  onClick={() =>
-                    setSelectedHistory(null)
+                  onClick={
+                    closeModal
                   }
                 >
                   <X size={16} />
                 </button>
 
                 <div className="modal-heading-row">
+
                   <div>
+                    <div className="eyebrow">
+                      PRACTICE
+                    </div>
+
+                    <h2>
+                      Quiz History
+                    </h2>
+
+                    <p>
+                      Review previous attempts
+                      and open a detailed
+                      answer analysis.
+                    </p>
+                  </div>
+
+                  <div className="quiz-hero-icon">
+                    <History size={23} />
+                  </div>
+
+                </div>
+
+                {quizHistory.length ===
+                0 ? (
+                  <div className="empty-modal">
+
+                    <History size={34} />
+
+                    <strong>
+                      No quiz attempts yet
+                    </strong>
+
+                    <span>
+                      Complete a quiz and
+                      it will appear here.
+                    </span>
+
+                  </div>
+                ) : (
+                  <div className="history-list">
+
+                    {quizHistory.map(
+                      (item) => (
+                        <button
+                          type="button"
+                          key={
+                            item.id
+                          }
+                          className="history-item"
+                          onClick={() =>
+                            setSelectedHistory(
+                              item
+                            )
+                          }
+                        >
+
+                          <div className="history-icon">
+                            <Trophy size={15} />
+                          </div>
+
+                          <div className="history-main">
+
+                            <strong>
+                              {
+                                item.topic
+                              }
+                            </strong>
+
+                            <span>
+                              {
+                                item.level
+                              }{" "}
+                              ·{" "}
+                              {
+                                item.total
+                              }{" "}
+                              questions ·{" "}
+                              {new Date(
+                                item.createdAt
+                              ).toLocaleString()}
+                            </span>
+
+                          </div>
+
+                          <div className="history-score">
+
+                            <strong>
+                              {
+                                item.percentage
+                              }%
+                            </strong>
+
+                            <span>
+                              {
+                                item.score
+                              }/
+                              {
+                                item.total
+                              }
+                            </span>
+
+                          </div>
+
+                          <ChevronRight
+                            size={15}
+                          />
+
+                        </button>
+                      )
+                    )}
+
+                  </div>
+                )}
+
+              </div>
+            </div>
+          )}
+
+          {/* =================================================
+              ANALYTICS MODAL
+          ================================================= */}
+
+          {modal?.type ===
+            "analytics" && (
+            <div
+              className="modal-overlay"
+              onClick={
+                closeModal
+              }
+            >
+              <div
+                className="tool-modal"
+                onClick={(event) =>
+                  event.stopPropagation()
+                }
+              >
+
+                <button
+                  type="button"
+                  className="modal-close"
+                  onClick={
+                    closeModal
+                  }
+                >
+                  <X size={16} />
+                </button>
+
+                <div className="modal-heading-row">
+
+                  <div>
+                    <div className="eyebrow">
+                      PROGRESS
+                    </div>
+
+                    <h2>
+                      Learning Analytics
+                    </h2>
+
+                    <p>
+                      A quick view of how your
+                      practice is progressing.
+                    </p>
+                  </div>
+
+                  <div className="quiz-hero-icon">
+                    <BarChart3 size={23} />
+                  </div>
+
+                </div>
+
+                <div className="analytics-big">
+
+                  <div className="analytics-big-number">
+                    {
+                      analytics.average
+                    }%
+                  </div>
+
+                  <div>
+
+                    <strong>
+                      Average quiz score
+                    </strong>
+
+                    <span>
+                      Best score:{" "}
+                      {
+                        analytics.best
+                      }% ·{" "}
+                      {
+                        analytics.attempts
+                      }{" "}
+                      attempt
+                      {analytics.attempts ===
+                      1
+                        ? ""
+                        : "s"}
+                    </span>
+
+                  </div>
+
+                </div>
+
+                <div className="analytics-stat-grid">
+
+                  <div>
+                    <strong>
+                      {
+                        analytics.attempts
+                      }
+                    </strong>
+                    <span>
+                      Quiz attempts
+                    </span>
+                  </div>
+
+                  <div>
+                    <strong>
+                      {
+                        analytics.questionsPracticed
+                      }
+                    </strong>
+                    <span>
+                      Questions practiced
+                    </span>
+                  </div>
+
+                  <div>
+                    <strong>
+                      {
+                        analytics.correct
+                      }
+                    </strong>
+                    <span>
+                      Correct answers
+                    </span>
+                  </div>
+
+                  <div>
+                    <strong>
+                      {
+                        analytics.best
+                      }%
+                    </strong>
+                    <span>
+                      Best score
+                    </span>
+                  </div>
+
+                </div>
+
+                <div className="insight-box">
+
+                  <Lightbulb size={16} />
+
+                  <div>
+
+                    <strong>
+                      PaperPal insight
+                    </strong>
+
+                    <span>
+                      Keep using short quizzes
+                      after lessons. Repeated
+                      retrieval practice helps
+                      reveal which concepts need
+                      another explanation.
+                    </span>
+
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          {/* =================================================
+              HISTORY DETAIL
+          ================================================= */}
+
+          {selectedHistory && (
+            <div
+              className="modal-overlay top-layer"
+              onClick={() =>
+                setSelectedHistory(
+                  null
+                )
+              }
+            >
+              <div
+                className="tool-modal wide"
+                onClick={(event) =>
+                  event.stopPropagation()
+                }
+              >
+
+                <button
+                  type="button"
+                  className="modal-close"
+                  onClick={() =>
+                    setSelectedHistory(
+                      null
+                    )
+                  }
+                >
+                  <X size={16} />
+                </button>
+
+                <div className="modal-heading-row">
+
+                  <div>
+
                     <div className="eyebrow">
                       QUIZ ANALYSIS
                     </div>
-                    <h2>{selectedHistory.topic}</h2>
+
+                    <h2>
+                      {
+                        selectedHistory.topic
+                      }
+                    </h2>
+
                     <p>
-                      {selectedHistory.level} ·{" "}
-                      {selectedHistory.total} questions ·{" "}
+                      {
+                        selectedHistory.level
+                      }{" "}
+                      ·{" "}
+                      {
+                        selectedHistory.total
+                      }{" "}
+                      questions ·{" "}
                       {new Date(
                         selectedHistory.createdAt
                       ).toLocaleString()}
                     </p>
+
                   </div>
 
                   <div className="detail-score">
-                    {selectedHistory.percentage}%
+                    {
+                      selectedHistory.percentage
+                    }%
                   </div>
+
                 </div>
 
                 <div className="detail-list">
-                  {selectedHistory.questions?.map(
-                    (question, index) => {
-                      const selected =
-                        selectedHistory.answers?.[index];
 
-                      const correct = Number(
-                        question.correctAnswer
-                      );
+                  {selectedHistory.questions?.map(
+                    (
+                      question,
+                      index
+                    ) => {
+
+                      const selected =
+                        Number(
+                          question.selectedAnswer ??
+                            selectedHistory
+                              .answers?.[
+                              index
+                            ]
+                        );
+
+                      const correct =
+                        Number(
+                          question.correctAnswer
+                        );
 
                       const isCorrect =
-                        Number(selected) === correct;
+                        selected ===
+                        correct;
 
                       return (
                         <div
                           key={index}
                           className={`detail-question ${
-                            isCorrect ? "ok" : "bad"
+                            isCorrect
+                              ? "ok"
+                              : "bad"
                           }`}
                         >
+
                           <div className="detail-q-top">
-                            <span>{index + 1}</span>
+
+                            <span>
+                              {index + 1}
+                            </span>
+
                             <strong>
-                              {question.question}
+                              {
+                                question.question
+                              }
                             </strong>
+
                             {isCorrect ? (
-                              <CheckCircle2 size={16} />
+                              <CheckCircle2
+                                size={16}
+                              />
                             ) : (
-                              <XCircle size={16} />
+                              <XCircle
+                                size={16}
+                              />
                             )}
+
                           </div>
 
                           <div className="detail-options">
+
                             {question.options?.map(
-                              (option, optionIndex) => (
+                              (
+                                option,
+                                optionIndex
+                              ) => (
+
                                 <div
-                                  key={optionIndex}
+                                  key={
+                                    optionIndex
+                                  }
                                   className={
-                                    optionIndex === correct
+                                    optionIndex ===
+                                    correct
                                       ? "is-correct"
                                       : optionIndex ===
                                           selected &&
@@ -1525,69 +2890,95 @@ Remember that I want to continue asking follow-up questions in this same convers
                                       : ""
                                   }
                                 >
+
                                   <span>
                                     {String.fromCharCode(
-                                      65 + optionIndex
+                                      65 +
+                                        optionIndex
                                     )}
                                   </span>
+
                                   {option}
+
                                 </div>
+
                               )
                             )}
+
+                          </div>
+
+                          <div className="detail-answer-summary">
+
+                            <div>
+
+                              <strong>
+                                Your answer
+                              </strong>
+
+                              <span>
+                                {
+                                  question
+                                    .options?.[
+                                    selected
+                                  ] ||
+                                  "Not answered"
+                                }
+                              </span>
+
+                            </div>
+
+                            <div>
+
+                              <strong>
+                                Correct answer
+                              </strong>
+
+                              <span>
+                                {
+                                  question
+                                    .options?.[
+                                    correct
+                                  ] ||
+                                  "Unavailable"
+                                }
+                              </span>
+
+                            </div>
+
                           </div>
 
                           {question.explanation && (
                             <div className="detail-explanation">
-                              <Lightbulb size={13} />
+
+                              <Lightbulb
+                                size={13}
+                              />
+
                               <span>
-                                {question.explanation}
+                                {
+                                  question.explanation
+                                }
                               </span>
+
                             </div>
                           )}
+
                         </div>
                       );
                     }
                   )}
+
                 </div>
+
               </div>
             </div>
           )}
+
         </div>
       </div>
     </Layout>
   );
 };
-
-const RunnerLoader = ({ title, subtitle }) => (
-  <div className="runner-loader">
-    <div className="runner-stage">
-      <div className="runner-track" />
-
-      <div className="runner-person">
-        <span className="runner-head">●</span>
-        <span className="runner-body" />
-        <span className="runner-arm runner-arm-one" />
-        <span className="runner-arm runner-arm-two" />
-        <span className="runner-leg runner-leg-one" />
-        <span className="runner-leg runner-leg-two" />
-        <span className="runner-shadow" />
-      </div>
-
-      <Brain className="runner-brain" size={19} />
-      <Sparkles className="runner-spark spark-one" size={12} />
-      <Sparkles className="runner-spark spark-two" size={10} />
-    </div>
-
-    <div className="runner-copy">
-      <strong>{title}</strong>
-      <span>{subtitle}</span>
-    </div>
-
-    <div className="runner-progress">
-      <span />
-    </div>
-  </div>
-);
 
 const QuizModal = ({
   quiz,
@@ -1613,269 +3004,786 @@ const QuizModal = ({
     onClick={onClose}
   >
     <div
-      className="tool-modal wide"
+      className="tool-modal wide quiz-modal"
       onClick={(event) =>
         event.stopPropagation()
       }
     >
+
       <button
+        type="button"
         className="modal-close"
         onClick={onClose}
-        aria-label="Close quiz"
+        disabled={quizLoading}
       >
         <X size={16} />
       </button>
 
-      {!quiz ? (
+      {/* =================================================
+          SETUP
+      ================================================= */}
+
+      {!quiz && (
         <div className="quiz-setup-view">
+
           <div className="modal-heading-row">
+
             <div>
+
               <div className="eyebrow">
                 PRACTICE MODE
               </div>
-              <h2>Quick Quiz</h2>
+
+              <h2>
+                Quick Quiz
+              </h2>
+
               <p>
-                Turn your current lesson into a focused
-                practice round.
+                Turn your current lesson
+                into a focused practice
+                round.
               </p>
+
             </div>
 
             <div className="quiz-hero-icon">
               <Trophy size={23} />
             </div>
+
           </div>
 
-          <label>Topic</label>
+          <label>
+            Topic
+          </label>
+
           <input
             value={quizTopic}
             onChange={(event) =>
-              setQuizTopic(event.target.value)
+              setQuizTopic(
+                event.target.value
+              )
             }
             placeholder="e.g. JavaScript closures"
+            disabled={
+              quizLoading
+            }
           />
 
           <div className="quiz-form-grid">
+
             <div>
-              <label>Questions</label>
+
+              <label>
+                Questions
+              </label>
+
               <select
                 value={quizCount}
                 onChange={(event) =>
                   setQuizCount(
-                    Number(event.target.value)
+                    Number(
+                      event.target.value
+                    )
                   )
                 }
+                disabled={
+                  quizLoading
+                }
               >
-                <option value={3}>3 Questions</option>
-                <option value={5}>5 Questions</option>
-                <option value={10}>10 Questions</option>
-                <option value={15}>15 Questions</option>
+                <option value={3}>
+                  3 Questions
+                </option>
+
+                <option value={5}>
+                  5 Questions
+                </option>
+
+                <option value={10}>
+                  10 Questions
+                </option>
+
+                <option value={15}>
+                  15 Questions
+                </option>
               </select>
+
             </div>
 
             <div>
-              <label>Difficulty</label>
+
+              <label>
+                Difficulty
+              </label>
+
               <select
                 value={quizLevel}
                 onChange={(event) =>
-                  setQuizLevel(event.target.value)
+                  setQuizLevel(
+                    event.target.value
+                  )
+                }
+                disabled={
+                  quizLoading
                 }
               >
-                <option>Beginner</option>
-                <option>Intermediate</option>
-                <option>Advanced</option>
+                <option>
+                  Beginner
+                </option>
+
+                <option>
+                  Intermediate
+                </option>
+
+                <option>
+                  Advanced
+                </option>
               </select>
+
             </div>
+
           </div>
 
           <div className="quiz-context">
+
             <Brain size={14} />
-            AI will create four-option questions with
-            explanations for every answer.
+
+            <span>
+              AI will create four-option
+              questions with explanations
+              for every answer.
+            </span>
+
           </div>
 
+          {quizLoading && (
+            <div className="quiz-loading-state">
+
+              <div className="upside-down-clock">
+
+                <Clock3 size={35} />
+
+              </div>
+
+              <strong>
+                Preparing your quiz...
+              </strong>
+
+              <span>
+                PaperPal is creating questions,
+                checking the answers, and
+                preparing explanations.
+              </span>
+
+            </div>
+          )}
+
           <div className="modal-actions">
+
             <button
+              type="button"
               className="secondary-btn"
               onClick={onClose}
+              disabled={
+                quizLoading
+              }
             >
               Cancel
             </button>
 
             <button
+              type="button"
               className="primary-btn"
               onClick={onStart}
               disabled={
-                quizLoading || !quizTopic.trim()
+                quizLoading ||
+                !quizTopic.trim()
               }
             >
               {quizLoading ? (
                 <>
-                  <Loader2
-                    size={14}
-                    className="learn-spin"
+                  <Clock3
+                    size={15}
+                    className="quiz-clock-button"
                   />
-                  Preparing…
+
+                  Preparing...
                 </>
               ) : (
                 <>
                   <Trophy size={14} />
+
                   Start Quiz
                 </>
               )}
             </button>
-          </div>
-        </div>
-      ) : !quizSubmitted ? (
-        <>
-          <div className="modal-heading-row">
-            <div>
-              <div className="eyebrow">
-                PRACTICE QUIZ
-              </div>
-              <h2>{quizTopic}</h2>
-              <p>
-                {quizLevel} · {quiz.questions.length}{" "}
-                questions
-              </p>
-            </div>
 
-            <div className="question-progress-pill">
-              {
-                quizAnswers.filter(
-                  (answer) => answer !== null
-                ).length
-              } / {quiz.questions.length}
-            </div>
           </div>
 
-          <div className="quiz-question-list">
-            {quiz.questions.map(
-              (question, index) => (
-                <div
-                  className="quiz-question-card"
-                  key={index}
-                >
-                  <div className="q-number">
-                    {index + 1}
-                  </div>
-
-                  <div className="q-body">
-                    <h3>{question.question}</h3>
-
-                    <div className="option-grid">
-                      {question.options.map(
-                        (option, optionIndex) => (
-                          <button
-                            key={optionIndex}
-                            className={`option-btn ${
-                              quizAnswers[index] ===
-                              optionIndex
-                                ? "selected"
-                                : ""
-                            }`}
-                            onClick={() =>
-                              onAnswer(
-                                index,
-                                optionIndex
-                              )
-                            }
-                          >
-                            <span>
-                              {String.fromCharCode(
-                                65 + optionIndex
-                              )}
-                            </span>
-                            {option}
-                          </button>
-                        )
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )
-            )}
-          </div>
-
-          <div className="modal-actions sticky-actions">
-            <button
-              className="secondary-btn"
-              onClick={onClose}
-            >
-              Later
-            </button>
-            <button
-              className="primary-btn"
-              onClick={onSubmit}
-            >
-              <CheckCircle2 size={14} />
-              Submit Quiz
-            </button>
-          </div>
-        </>
-      ) : (
-        <div className="quiz-result-view">
-          <div className="result-medal">
-            <Trophy size={29} />
-          </div>
-
-          <div className="eyebrow">
-            PRACTICE COMPLETE
-          </div>
-          <h2>Nice work.</h2>
-
-          <div className="result-score">
-            {quizScore?.percentage || 0}
-            <span>%</span>
-          </div>
-
-          <p>
-            {quizScore?.score || 0} of{" "}
-            {quizScore?.total || 0} answers correct.
-          </p>
-
-          <div className="result-stat-row">
-            <div>
-              <span>Topic</span>
-              <strong>{quizTopic}</strong>
-            </div>
-            <div>
-              <span>Level</span>
-              <strong>{quizLevel}</strong>
-            </div>
-            <div>
-              <span>Questions</span>
-              <strong>
-                {quizScore?.total || 0}
-              </strong>
-            </div>
-          </div>
-
-          <div className="modal-actions">
-            <button
-              className="secondary-btn"
-              onClick={onReset}
-            >
-              <ChevronRight size={14} />
-              Quiz Setup
-            </button>
-
-            <button
-              className="primary-btn"
-              onClick={onRetake}
-            >
-              <RotateCcw size={14} />
-              Retake
-            </button>
-
-            <button
-              className="secondary-btn"
-              onClick={onClose}
-            >
-              Done
-            </button>
-          </div>
         </div>
       )}
+
+      {/* =================================================
+          QUESTIONS
+      ================================================= */}
+
+      {quiz &&
+        !quizSubmitted && (
+          <div className="quiz-question-view">
+
+            <div className="modal-heading-row">
+
+              <div>
+
+                <div className="eyebrow">
+                  PRACTICE QUIZ
+                </div>
+
+                <h2>
+                  {quizTopic}
+                </h2>
+
+                <p>
+                  {quizLevel} ·{" "}
+                  {quiz.questions.length}{" "}
+                  questions
+                </p>
+
+              </div>
+
+              <div className="question-progress-pill">
+
+                {
+                  quizAnswers.filter(
+                    (answer) =>
+                      answer !==
+                      null
+                  ).length
+                }{" "}
+                /{" "}
+                {
+                  quiz.questions
+                    .length
+                }
+
+              </div>
+
+            </div>
+
+            <div className="quiz-question-list">
+
+              {quiz.questions.map(
+                (
+                  question,
+                  questionIndex
+                ) => (
+
+                  <div
+                    className="quiz-question-card"
+                    key={
+                      questionIndex
+                    }
+                  >
+
+                    <div className="q-number">
+                      {
+                        questionIndex +
+                        1
+                      }
+                    </div>
+
+                    <div className="q-body">
+
+                      <h3>
+                        {
+                          question.question
+                        }
+                      </h3>
+
+                      <div className="option-grid">
+
+                        {question.options.map(
+                          (
+                            option,
+                            optionIndex
+                          ) => {
+
+                            const selected =
+                              quizAnswers[
+                                questionIndex
+                              ] ===
+                              optionIndex;
+
+                            return (
+                              <button
+                                type="button"
+                                key={
+                                  optionIndex
+                                }
+                                className={`option-btn ${
+                                  selected
+                                    ? "selected"
+                                    : ""
+                                }`}
+                                onClick={() =>
+                                  onAnswer(
+                                    questionIndex,
+                                    optionIndex
+                                  )
+                                }
+                              >
+
+                                <span className="option-letter">
+                                  {String.fromCharCode(
+                                    65 +
+                                      optionIndex
+                                  )}
+                                </span>
+
+                                <span className="option-text">
+                                  {option}
+                                </span>
+
+                                {selected && (
+                                  <Check
+                                    size={15}
+                                  />
+                                )}
+
+                              </button>
+                            );
+                          }
+                        )}
+
+                      </div>
+
+                    </div>
+
+                  </div>
+                )
+              )}
+
+            </div>
+
+            <div className="modal-actions sticky-actions">
+
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={
+                  onReset
+                }
+              >
+                <RotateCcw size={14} />
+                Restart
+              </button>
+
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={
+                  onSubmit
+                }
+                disabled={quizAnswers.some(
+                  (answer) =>
+                    answer ===
+                    null
+                )}
+              >
+                <CheckCircle2
+                  size={14}
+                />
+                Submit Quiz
+              </button>
+
+            </div>
+
+          </div>
+        )}
+
+      {/* =================================================
+          RESULT
+      ================================================= */}
+
+      {quiz &&
+        quizSubmitted &&
+        quizScore && (
+          <div className="quiz-result-view">
+
+            <div className="result-medal">
+              <Trophy size={29} />
+            </div>
+
+            <div className="eyebrow">
+              PRACTICE COMPLETE
+            </div>
+
+            <h2>
+              {quizScore.percentage >=
+              80
+                ? "Excellent work! 🎉"
+                : quizScore.percentage >=
+                  60
+                ? "Good work! 👍"
+                : "Keep practicing! 💪"}
+            </h2>
+
+            <div className="result-score">
+              {
+                quizScore.percentage
+              }
+
+              <span>
+                %
+              </span>
+            </div>
+
+            <p>
+              {
+                quizScore.score
+              }{" "}
+              of{" "}
+              {
+                quizScore.total
+              }{" "}
+              answers correct.
+            </p>
+
+            <div className="result-stat-row">
+
+              <div>
+                <span>
+                  Topic
+                </span>
+
+                <strong>
+                  {
+                    quizScore.topic
+                  }
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Level
+                </span>
+
+                <strong>
+                  {
+                    quizScore.level
+                  }
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Score
+                </span>
+
+                <strong>
+                  {
+                    quizScore.score
+                  }
+                  /
+                  {
+                    quizScore.total
+                  }
+                </strong>
+              </div>
+
+            </div>
+
+            {/* =================================================
+                ANSWER REVIEW
+            ================================================= */}
+
+            <div className="quiz-review-section">
+
+              <div className="quiz-review-heading">
+
+                <div>
+
+                  <div className="eyebrow">
+                    ANSWER REVIEW
+                  </div>
+
+                  <h3>
+                    Correct Answers &
+                    Explanations
+                  </h3>
+
+                </div>
+
+                <div className="quiz-review-total">
+                  {
+                    quizScore.score
+                  }
+                  /
+                  {
+                    quizScore.total
+                  }
+                </div>
+
+              </div>
+
+              <div className="quiz-review-list">
+
+                {quizScore.questions?.map(
+                  (
+                    question,
+                    index
+                  ) => {
+
+                    const selected =
+                      Number(
+                        question.selectedAnswer
+                      );
+
+                    const correct =
+                      Number(
+                        question.correctAnswer
+                      );
+
+                    const isCorrect =
+                      selected ===
+                      correct;
+
+                    return (
+                      <div
+                        key={index}
+                        className={`quiz-review-card ${
+                          isCorrect
+                            ? "correct"
+                            : "incorrect"
+                        }`}
+                      >
+
+                        <div className="quiz-review-top">
+
+                          <div className="quiz-review-number">
+                            {index + 1}
+                          </div>
+
+                          <div className="quiz-review-question">
+
+                            <h4>
+                              {
+                                question.question
+                              }
+                            </h4>
+
+                            <span
+                              className={`review-status ${
+                                isCorrect
+                                  ? "correct-status"
+                                  : "incorrect-status"
+                              }`}
+                            >
+                              {isCorrect ? (
+                                <>
+                                  <CheckCircle2
+                                    size={
+                                      13
+                                    }
+                                  />
+                                  Correct
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle
+                                    size={
+                                      13
+                                    }
+                                  />
+                                  Incorrect
+                                </>
+                              )}
+                            </span>
+
+                          </div>
+
+                        </div>
+
+                        <div className="quiz-review-options">
+
+                          {question.options?.map(
+                            (
+                              option,
+                              optionIndex
+                            ) => {
+
+                              const isRight =
+                                optionIndex ===
+                                correct;
+
+                              const isWrong =
+                                optionIndex ===
+                                  selected &&
+                                !isCorrect;
+
+                              return (
+                                <div
+                                  key={
+                                    optionIndex
+                                  }
+                                  className={`quiz-review-option ${
+                                    isRight
+                                      ? "correct-option"
+                                      : ""
+                                  } ${
+                                    isWrong
+                                      ? "wrong-option"
+                                      : ""
+                                  }`}
+                                >
+
+                                  <span className="review-option-letter">
+
+                                    {String.fromCharCode(
+                                      65 +
+                                        optionIndex
+                                    )}
+
+                                  </span>
+
+                                  <span className="review-option-text">
+                                    {
+                                      option
+                                    }
+                                  </span>
+
+                                  {isRight && (
+                                    <CheckCircle2
+                                      size={
+                                        15
+                                      }
+                                      className="review-correct-icon"
+                                    />
+                                  )}
+
+                                  {isWrong && (
+                                    <XCircle
+                                      size={
+                                        15
+                                      }
+                                      className="review-wrong-icon"
+                                    />
+                                  )}
+
+                                </div>
+                              );
+                            }
+                          )}
+
+                        </div>
+
+                        <div className="quiz-review-answer">
+
+                          <div className="review-answer-row">
+
+                            <strong>
+                              Your answer:
+                            </strong>
+
+                            <span>
+                              {
+                                question
+                                  .options?.[
+                                  selected
+                                ] ||
+                                "Not answered"
+                              }
+                            </span>
+
+                          </div>
+
+                          <div className="review-answer-row correct-answer-row">
+
+                            <strong>
+                              Correct answer:
+                            </strong>
+
+                            <span>
+                              {
+                                question
+                                  .options?.[
+                                  correct
+                                ] ||
+                                "Unavailable"
+                              }
+                            </span>
+
+                          </div>
+
+                        </div>
+
+                        {question.explanation && (
+                          <div className="quiz-review-explanation">
+
+                            <Lightbulb
+                              size={15}
+                            />
+
+                            <div>
+
+                              <strong>
+                                Explanation
+                              </strong>
+
+                              <p>
+                                {
+                                  question.explanation
+                                }
+                              </p>
+
+                            </div>
+
+                          </div>
+                        )}
+
+                      </div>
+                    );
+                  }
+                )}
+
+              </div>
+
+            </div>
+
+            <div className="modal-actions">
+
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={
+                  onReset
+                }
+              >
+                <RotateCcw
+                  size={14}
+                />
+                Try Again
+              </button>
+
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={() =>
+                  setModal({
+                    type: "history",
+                  })
+                }
+              >
+                <History
+                  size={14}
+                />
+                View History
+              </button>
+
+            </div>
+
+          </div>
+        )}
+
     </div>
   </div>
 );

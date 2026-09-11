@@ -1532,6 +1532,158 @@
 }
 
 /* =========================================================
+   PAY MY BILL
+========================================================= */
+
+.bill-pay-card {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  margin-top: 12px;
+
+  padding: 14px 15px;
+
+  border: 1px solid #e6ddec;
+
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #fff,
+      #fbf7ff
+    );
+
+  display: flex;
+  align-items: center;
+
+  gap: 11px;
+
+  box-shadow:
+    0 5px 17px
+      rgba(56, 28, 71, 0.025);
+}
+
+.bill-pay-icon {
+  flex: 0 0 37px;
+
+  width: 37px;
+  height: 37px;
+
+  border-radius: 10px;
+
+  background: #eee4f9;
+
+  color: #7d3fc0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bill-pay-content {
+  min-width: 0;
+
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.bill-pay-content strong {
+  color: #3d324b;
+
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.bill-pay-content p {
+  margin: 0;
+
+  color: #968c9d;
+
+  font-size: 9px;
+
+  line-height: 1.45;
+}
+
+.bill-pay-button {
+  flex: 0 0 auto;
+
+  min-height: 38px;
+
+  padding: 0 13px;
+
+  border: 1px solid #8140c8;
+
+  border-radius: 10px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #8242ca,
+      #7137b8
+    );
+
+  color: #fff;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 6px;
+
+  font-size: 9px;
+  font-weight: 850;
+
+  text-decoration: none;
+
+  box-shadow:
+    0 6px 15px
+      rgba(124, 58, 191, 0.14);
+
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.bill-pay-button:hover {
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 8px 18px
+      rgba(124, 58, 191, 0.2);
+}
+
+.bill-provider-unknown {
+  flex: 0 0 auto;
+
+  min-height: 36px;
+
+  padding: 0 11px;
+
+  border: 1px solid #e6ddec;
+
+  border-radius: 10px;
+
+  background: #f8f5fa;
+
+  color: #8c8194;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 9px;
+  font-weight: 800;
+
+  text-align: center;
+}
+
+/* =========================================================
    BOTTOM ACTIONS
 ========================================================= */
 
@@ -1941,6 +2093,25 @@
     margin-bottom: -4px;
   }
 
+  .bill-pay-card {
+    align-items: flex-start;
+
+    flex-wrap: wrap;
+  }
+
+  .bill-pay-content {
+    flex: 1 1 calc(100% - 50px);
+  }
+
+  .bill-pay-button,
+  .bill-provider-unknown {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    margin-left: 48px;
+  }
+
   .bill-actions {
     align-items: stretch;
 
@@ -1996,6 +2167,19 @@
   .bills-page {
     padding-left: 9px;
     padding-right: 9px;
+  }
+
+  .bill-pay-card {
+    padding: 12px;
+  }
+
+  .bill-pay-content {
+    flex-basis: calc(100% - 48px);
+  }
+
+  .bill-pay-button,
+  .bill-provider-unknown {
+    margin-left: 0;
   }
 }
 

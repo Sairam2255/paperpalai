@@ -1,24 +1,21 @@
 const express = require("express");
 
-const router = express.Router();
+const router =
+  express.Router();
 
-const authMiddleware = require("../middleware/authMiddleware");
+const authMiddleware =
+  require("../middleware/authMiddleware");
 
-const resumeUpload = require("../middleware/resumeUploadMiddleware");
+const upload =
+  require("../middleware/resumeUploadMiddleware");
 
 const {
   buildResume,
   enhanceResume,
+  analyzeResume,
   getLatestResume,
   getResumeHistory,
-  getResumeById,
-  deleteResume,
 } = require("../controllers/resumeController");
-
-
-/* =====================================================
-   BUILD NEW RESUME
-===================================================== */
 
 router.post(
   "/build",
@@ -26,22 +23,19 @@ router.post(
   buildResume
 );
 
-
-/* =====================================================
-   ENHANCE EXISTING RESUME
-===================================================== */
-
 router.post(
   "/enhance",
   authMiddleware,
-  resumeUpload.single("resume"),
+  upload.single("resume"),
   enhanceResume
 );
 
-
-/* =====================================================
-   GET LATEST RESUME
-===================================================== */
+router.post(
+  "/analyze",
+  authMiddleware,
+  upload.single("resume"),
+  analyzeResume
+);
 
 router.get(
   "/latest",
@@ -49,42 +43,10 @@ router.get(
   getLatestResume
 );
 
-
-/* =====================================================
-   GET RESUME HISTORY
-===================================================== */
-
 router.get(
   "/history",
   authMiddleware,
   getResumeHistory
 );
-
-
-/* =====================================================
-   GET RESUME BY ID
-===================================================== */
-
-router.get(
-  "/:id",
-  authMiddleware,
-  getResumeById
-);
-
-
-/* =====================================================
-   DELETE RESUME
-===================================================== */
-
-router.delete(
-  "/:id",
-  authMiddleware,
-  deleteResume
-);
-
-
-/* =====================================================
-   EXPORT ROUTER
-===================================================== */
 
 module.exports = router;

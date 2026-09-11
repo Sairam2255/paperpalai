@@ -42,6 +42,7 @@ import {
   Pencil,
   FilePlus2,
   WandSparkles,
+  Loader2,
 } from "lucide-react";
 
 import Layout from "../components/Layout";
@@ -177,6 +178,31 @@ function Career() {
 
   const [resumeEnhanceFile, setResumeEnhanceFile] =
     useState(null);
+
+  /* =====================================================
+     ATS / RESUME MATCH ANALYSIS
+  ===================================================== */
+
+  const [atsResumeFile, setAtsResumeFile] =
+    useState(null);
+
+  const [atsJobDescription, setAtsJobDescription] =
+    useState("");
+
+  const [atsTargetRole, setAtsTargetRole] =
+    useState("");
+
+  const [atsLoading, setAtsLoading] =
+    useState(false);
+
+  const [atsResult, setAtsResult] =
+    useState(null);
+
+  const [atsError, setAtsError] =
+    useState("");
+
+  const atsFileInputRef =
+    useRef(null);
 
   const resumePrintRef =
     useRef(null);
@@ -654,6 +680,87 @@ function Career() {
 
     setResumeEnhanceFile(file);
     setResumeError("");
+  };
+
+  const handleAtsResumeFile = (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    const validTypes = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+
+    if (!validTypes.includes(file.type)) {
+      setAtsError(
+        "Please upload a PDF or DOCX resume."
+      );
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setAtsError(
+        "Resume must be smaller than 10 MB."
+      );
+      event.target.value = "";
+      return;
+    }
+
+    setAtsResumeFile(file);
+    setAtsResult(null);
+    setAtsError("");
+  };
+
+  const analyzeResumeMatch = async () => {
+    if (!atsResumeFile) {
+      setAtsError("Please upload your resume.");
+      return;
+    }
+
+    if (!atsJobDescription.trim()) {
+      setAtsError(
+        "Please paste the job description."
+      );
+      return;
+    }
+
+    try {
+      setAtsLoading(true);
+      setAtsError("");
+      setAtsResult(null);
+
+      const formData = new FormData();
+      formData.append("resume", atsResumeFile);
+      formData.append(
+        "jobDescription",
+        atsJobDescription
+      );
+      formData.append(
+        "targetRole",
+        atsTargetRole || careerGoal || selectedPath
+      );
+
+      const response = await API.post(
+        "/resume/analyze",
+        formData
+      );
+
+      setAtsResult(response.data?.analysis || null);
+    } catch (error) {
+      console.error(
+        "ATS Resume Analysis Error:",
+        error
+      );
+
+      setAtsError(
+        error.response?.data?.message ||
+          "Failed to analyze resume."
+      );
+    } finally {
+      setAtsLoading(false);
+    }
   };
 
   const buildResume = async () => {
@@ -1584,6 +1691,198 @@ function Career() {
 
         </div>
 
+
+        {/* =================================================
+            RESUME & JOB MATCH / ATS ANALYSIS
+        ================================================= */}
+
+        <section className="career-card career-section-card ats-analysis-card">
+          <div className="career-section-header">
+            <div className="career-card-icon orange-icon">
+              <Target size={20} />
+            </div>
+
+            <div>
+              <h2>Resume & Job Match</h2>
+              <p>
+                Compare your resume with a job description and get an estimated ATS match.
+              </p>
+            </div>
+          </div>
+
+          <div className="ats-analysis-form">
+            <input
+              ref={atsFileInputRef}
+              type="file"
+              accept=".pdf,.docx"
+              onChange={handleAtsResumeFile}
+              hidden
+            />
+
+            <button
+              type="button"
+              className="ats-upload-box"
+              onClick={() =>
+                atsFileInputRef.current?.click()
+              }
+              disabled={atsLoading}
+            >
+              <Upload size={23} />
+              <strong>
+                {atsResumeFile
+                  ? atsResumeFile.name
+                  : "Upload your resume"}
+              </strong>
+              <span>
+                PDF or DOCX · Maximum 10 MB
+              </span>
+            </button>
+
+            <div className="ats-field-group">
+              <label htmlFor="ats-target-role">
+                Target role
+              </label>
+
+              <input
+                id="ats-target-role"
+                type="text"
+                value={atsTargetRole}
+                onChange={(event) =>
+                  setAtsTargetRole(event.target.value)
+                }
+                placeholder={
+                  careerGoal ||
+                  selectedPath ||
+                  "Example: Salesforce Developer"
+                }
+                className="career-input"
+                disabled={atsLoading}
+              />
+            </div>
+
+            <div className="ats-field-group ats-job-description-group">
+              <label htmlFor="ats-job-description">
+                Job description
+              </label>
+
+              <textarea
+                id="ats-job-description"
+                value={atsJobDescription}
+                onChange={(event) =>
+                  setAtsJobDescription(event.target.value)
+                }
+                placeholder="Paste the complete job description and requirements here..."
+                className="ats-job-description"
+                disabled={atsLoading}
+              />
+            </div>
+
+            {atsError && (
+              <div className="ats-error">
+                <AlertTriangle size={15} />
+                <span>{atsError}</span>
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="career-btn career-btn-primary ats-analyze-button"
+              onClick={analyzeResumeMatch}
+              disabled={atsLoading}
+            >
+              {atsLoading ? (
+                <>
+                  <Loader2
+                    size={17}
+                    className="career-spin"
+                  />
+                  Analyzing Resume...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={17} />
+                  Analyze Resume Match
+                </>
+              )}
+            </button>
+          </div>
+
+          {atsResult && (
+            <div className="ats-result-panel">
+              <div className="ats-score-grid">
+                <AtsScoreCard
+                  title="Estimated ATS Score"
+                  value={atsResult.atsScore}
+                />
+                <AtsScoreCard
+                  title="Resume / Job Match"
+                  value={atsResult.jobMatchPercentage}
+                />
+                <AtsScoreCard
+                  title="Experience Fit"
+                  value={atsResult.experienceFitPercentage}
+                />
+              </div>
+
+              <AtsKeywordSection
+                title="Matched Skills"
+                items={atsResult.matchedSkills}
+                type="matched"
+              />
+
+              <AtsKeywordSection
+                title="Missing Skills"
+                items={atsResult.missingSkills}
+                type="missing"
+              />
+
+              <AtsKeywordSection
+                title="Matched Keywords"
+                items={atsResult.matchedKeywords}
+                type="matched"
+              />
+
+              <AtsKeywordSection
+                title="Missing Keywords"
+                items={atsResult.missingKeywords}
+                type="missing"
+              />
+
+              <div className="ats-suggestions-box">
+                <div className="ats-subheading">
+                  <Lightbulb size={17} />
+                  Improvement Suggestions
+                </div>
+
+                {Array.isArray(
+                  atsResult.improvementSuggestions
+                ) &&
+                atsResult.improvementSuggestions.length > 0 ? (
+                  <ul>
+                    {atsResult.improvementSuggestions.map(
+                      (suggestion, index) => (
+                        <li key={`${suggestion}-${index}`}>
+                          {suggestion}
+                        </li>
+                      )
+                    )}
+                  </ul>
+                ) : (
+                  <p>
+                    No additional improvement suggestions were returned.
+                  </p>
+                )}
+              </div>
+
+              <div className="ats-disclaimer">
+                <AlertCircle size={14} />
+                <span>
+                  These scores are estimates based on the supplied resume and job description. They are not the proprietary score of any specific company's ATS.
+                </span>
+              </div>
+            </div>
+          )}
+        </section>
 
         {/* =================================================
             AI RESULTS
@@ -4390,5 +4689,64 @@ function Career() {
   );
 }
 
+
+
+const AtsScoreCard = ({ title, value }) => {
+  const numericValue = Number.isFinite(Number(value))
+    ? Math.round(
+        Math.min(Math.max(Number(value), 0), 100)
+      )
+    : 0;
+
+  return (
+    <div className="ats-score-card">
+      <span>{title}</span>
+      <strong>{numericValue}%</strong>
+      <div className="ats-score-track">
+        <div
+          className="ats-score-fill"
+          style={{ width: `${numericValue}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+
+const AtsKeywordSection = ({
+  title,
+  items,
+  type = "matched",
+}) => {
+  const safeItems = Array.isArray(items)
+    ? items.filter(Boolean)
+    : [];
+
+  return (
+    <div className={`ats-keyword-section ${type}`}>
+      <div className="ats-subheading">
+        {type === "matched" ? (
+          <CheckCircle size={17} />
+        ) : (
+          <AlertTriangle size={17} />
+        )}
+        {title}
+      </div>
+
+      {safeItems.length > 0 ? (
+        <div className="ats-chip-list">
+          {safeItems.map((item, index) => (
+            <span key={`${item}-${index}`}>
+              {item}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="ats-empty-list">
+          None identified.
+        </p>
+      )}
+    </div>
+  );
+};
 
 export default Career;

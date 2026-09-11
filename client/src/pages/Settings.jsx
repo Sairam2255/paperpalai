@@ -10,9 +10,14 @@ import {
   User,
   Settings as SettingsIcon,
   Sparkles,
+  KeyRound,
+  ShieldCheck,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 
 import Layout from "../components/Layout";
+import API from "../services/api";
 import "./Settings.css";
 
 const LANGUAGES = [
@@ -109,6 +114,24 @@ function Settings() {
   const [savedMessage, setSavedMessage] =
     useState("");
 
+  const [geminiKey, setGeminiKey] =
+    useState("");
+
+  const [geminiEnabled, setGeminiEnabled] =
+    useState(false);
+
+  const [geminiHasKey, setGeminiHasKey] =
+    useState(false);
+
+  const [geminiLoading, setGeminiLoading] =
+    useState(false);
+
+  const [geminiMessage, setGeminiMessage] =
+    useState("");
+
+  const [geminiError, setGeminiError] =
+    useState("");
+
   const user = (() => {
     try {
       return JSON.parse(
@@ -123,6 +146,117 @@ function Settings() {
   useEffect(() => {
     applyTheme(theme);
   }, []);
+
+  useEffect(() => {
+    loadGeminiSettings();
+  }, []);
+
+  const loadGeminiSettings = async () => {
+    try {
+      setGeminiError("");
+
+      const response = await API.get(
+        "/ai-settings/gemini"
+      );
+
+      setGeminiEnabled(
+        Boolean(response.data?.enabled)
+      );
+
+      setGeminiHasKey(
+        Boolean(response.data?.hasKey)
+      );
+    } catch (error) {
+      console.error(
+        "Load Gemini Settings Error:",
+        error
+      );
+    }
+  };
+
+  const saveGeminiApiKey = async () => {
+    const apiKey = geminiKey.trim();
+
+    if (!apiKey) {
+      setGeminiError(
+        "Please enter your Gemini API key."
+      );
+      return;
+    }
+
+    try {
+      setGeminiLoading(true);
+      setGeminiError("");
+      setGeminiMessage("");
+
+      const response = await API.post(
+        "/ai-settings/gemini",
+        { apiKey }
+      );
+
+      setGeminiKey("");
+      setGeminiEnabled(
+        Boolean(response.data?.enabled)
+      );
+      setGeminiHasKey(
+        Boolean(response.data?.hasKey)
+      );
+      setGeminiMessage(
+        response.data?.message ||
+          "Your personal Gemini API key has been saved securely."
+      );
+    } catch (error) {
+      console.error(
+        "Save Gemini Key Error:",
+        error
+      );
+
+      setGeminiError(
+        error.response?.data?.message ||
+          "Failed to save Gemini API key."
+      );
+    } finally {
+      setGeminiLoading(false);
+    }
+  };
+
+  const removeGeminiApiKey = async () => {
+    const confirmed = window.confirm(
+      "Remove your personal Gemini API key and return to PaperPal's default AI?"
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setGeminiLoading(true);
+      setGeminiError("");
+      setGeminiMessage("");
+
+      const response = await API.delete(
+        "/ai-settings/gemini"
+      );
+
+      setGeminiKey("");
+      setGeminiEnabled(false);
+      setGeminiHasKey(false);
+      setGeminiMessage(
+        response.data?.message ||
+          "Your personal Gemini API key has been removed."
+      );
+    } catch (error) {
+      console.error(
+        "Remove Gemini Key Error:",
+        error
+      );
+
+      setGeminiError(
+        error.response?.data?.message ||
+          "Failed to remove Gemini API key."
+      );
+    } finally {
+      setGeminiLoading(false);
+    }
+  };
 
   const changeTheme = (nextTheme) => {
     setTheme(nextTheme);
@@ -354,6 +488,115 @@ function Settings() {
               New analysis and learning requests
               can use it automatically.
             </span>
+          </div>
+        </section>
+
+        <section className="settings-section gemini-settings-section">
+          <div className="settings-section-heading">
+            <div className="settings-heading-icon">
+              <KeyRound size={19} />
+            </div>
+
+            <div>
+              <h2>Gemini AI</h2>
+              <p>
+                Use your own Gemini API quota for PaperPal AI.
+              </p>
+            </div>
+          </div>
+
+          <div className="gemini-settings-card">
+            <div className="gemini-status-row">
+              <div className="gemini-status-icon">
+                <ShieldCheck size={20} />
+              </div>
+
+              <div className="gemini-status-copy">
+                <strong>
+                  {geminiEnabled
+                    ? "Personal Gemini AI is active"
+                    : "Using PaperPal AI"}
+                </strong>
+
+                <span>
+                  {geminiEnabled
+                    ? "Your Gemini API key is being used for your AI requests."
+                    : "PaperPal's default Gemini key is being used."}
+                </span>
+              </div>
+
+              <div
+                className={`gemini-status-pill ${
+                  geminiEnabled ? "active" : ""
+                }`}
+              >
+                {geminiEnabled ? "Personal" : "Default"}
+              </div>
+            </div>
+
+            <div className="gemini-input-row">
+              <input
+                type="password"
+                value={geminiKey}
+                onChange={(event) =>
+                  setGeminiKey(event.target.value)
+                }
+                placeholder="Paste your Gemini API key"
+                autoComplete="off"
+                spellCheck="false"
+                disabled={geminiLoading}
+              />
+
+              <button
+                type="button"
+                onClick={saveGeminiApiKey}
+                disabled={geminiLoading}
+              >
+                {geminiLoading ? (
+                  <>
+                    <Loader2 size={16} className="gemini-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={16} />
+                    Save Key
+                  </>
+                )}
+              </button>
+            </div>
+
+            {geminiHasKey && (
+              <button
+                type="button"
+                className="gemini-remove-button"
+                onClick={removeGeminiApiKey}
+                disabled={geminiLoading}
+              >
+                <Trash2 size={15} />
+                Remove Personal Key
+              </button>
+            )}
+
+            {geminiMessage && (
+              <div className="gemini-success-message">
+                <Check size={15} />
+                {geminiMessage}
+              </div>
+            )}
+
+            {geminiError && (
+              <div className="gemini-error-message">
+                {geminiError}
+              </div>
+            )}
+
+            <div className="gemini-security-note">
+              <ShieldCheck size={15} />
+              <span>
+                Your API key is encrypted before it is stored. PaperPal never displays the saved key back to you.
+              </span>
+            </div>
           </div>
         </section>
 

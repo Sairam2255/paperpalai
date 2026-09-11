@@ -20,23 +20,28 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: false,
+      minlength: 6,
     },
 
     googleId: {
       type: String,
       unique: true,
       sparse: true,
-      default: undefined,
     },
 
-    resetPasswordToken: {
+    // ==========================================
+    // PERSONAL GEMINI API KEY
+    // ==========================================
+
+    geminiApiKeyEncrypted: {
       type: String,
-      default: undefined,
+      default: "",
+      select: false,
     },
 
-    resetPasswordExpires: {
-      type: Date,
-      default: undefined,
+    geminiApiKeyEnabled: {
+      type: Boolean,
+      default: false,
     },
   },
   {
@@ -57,7 +62,9 @@ userSchema.pre("save", async function () {
   );
 });
 
-module.exports = mongoose.model(
+const User = mongoose.model(
   "User",
   userSchema
 );
+
+module.exports = User;
