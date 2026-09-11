@@ -291,16 +291,31 @@ const createQuiz = async (req, res) => {
         submittedAt: null,
       });
 
-    /* Hide correct answers until submission */
+    /*
+      IMPORTANT:
+      Keep correctAnswer in the response because
+      the Learn frontend uses it to validate and
+      score the generated quiz.
+    */
 
     const safeQuestions =
       quiz.questions.map(
         (question) => ({
           _id: question._id,
+
           question:
             question.question,
+
           options:
             question.options,
+
+          correctAnswer:
+            Number(
+              question.correctAnswer
+            ),
+
+          explanation:
+            question.explanation || "",
         })
       );
 
@@ -310,11 +325,19 @@ const createQuiz = async (req, res) => {
 
       quiz: {
         _id: quiz._id,
-        topic: quiz.topic,
-        level: quiz.level,
-        language: quiz.language,
+
+        topic:
+          quiz.topic,
+
+        level:
+          quiz.level,
+
+        language:
+          quiz.language,
+
         totalQuestions:
           quiz.totalQuestions,
+
         questions:
           safeQuestions,
       },
