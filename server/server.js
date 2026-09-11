@@ -38,6 +38,10 @@ const resumeRoutes =
 const aiSettingsRoutes =
   require("./routes/aiSettingsRoutes");
 
+// ✅ CHAT ROUTES
+const chatRoutes =
+  require("./routes/chatRoutes");
+
 const app = express();
 
 /* =========================================================
@@ -93,6 +97,7 @@ app.use(
       "GET",
       "POST",
       "PUT",
+      "PATCH",
       "DELETE",
       "OPTIONS",
     ],
@@ -197,6 +202,19 @@ app.post(
 app.use(
   "/api/resume",
   resumeRoutes
+);
+
+/* =========================================================
+   CHAT ROUTES
+========================================================= */
+
+console.log(
+  "🔥 REGISTERING CHAT ROUTES /api/chat"
+);
+
+app.use(
+  "/api/chat",
+  chatRoutes
 );
 
 /* =========================================================
